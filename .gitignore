@@ -1,0 +1,16 @@
+*~
+*.pyc
+*.pyo
+.coverage*
+.tox
+*.egg-info
+*.egg
+*.qcow2
+*.raw
+data
+dist
+.cache/
+.eggs/
+virtualenv/
+AUTHORS
+build/

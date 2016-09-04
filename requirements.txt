@@ -1,0 +1,12 @@
+coverage==4.2
+d2to1==0.2.12.post1
+pbr==1.10.0
+pluggy==0.3.1
+py==1.4.31
+tox==2.3.1
+virtualenv==15.0.3
+pytest
+mock
+pep8
+flake8
+git+https://gerrit.wikimedia.org/r/p/pywikibot/core@master#egg=pywikibot
