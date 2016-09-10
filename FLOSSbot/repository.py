@@ -205,7 +205,8 @@ class Repository(object):
 
     @staticmethod
     def verify_http(url):
-        return requests.head(url).status_code == requests.codes.ok
+        r = requests.head(url, allow_redirects=True)
+        return r.status_code == requests.codes.ok
 
     @staticmethod
     def verify_protocol(url, protocol):
