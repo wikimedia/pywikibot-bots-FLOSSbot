@@ -248,7 +248,8 @@ class Repository(object):
         if protocol:
             if not Repository.verify_protocol(url, protocol):
                 log.error("ERROR " + url +
-                          " does not obey the expected protocol")
+                          " does not obey the expected protocol " +
+                          str(protocol))
                 return None
             else:
                 return protocol
