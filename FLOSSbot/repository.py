@@ -28,6 +28,7 @@ from FLOSSbot import util
 
 log = logging.getLogger(__name__)
 
+P_username = "P554"
 P_protocol = "P2700"
 P_source_code_repository = "P1324"
 
@@ -172,11 +173,19 @@ class Repository(object):
         """.format(url=url))
 
     @staticmethod
-    def verify_svn(url):
+    def verify_svn(url, credentials):
+        if credentials:
+            user = '--username=' + credentials[0]
+        else:
+            user = ''
+        if credentials and len(credentials) > 1:
+            password = '--password=' + credentials[1]
+        else:
+            password = ''
         return util.sh_bool("""
         set -e
-        timeout 30 svn info {url}
-        """.format(url=url))
+        timeout 30 svn info {url} {user} {password}
+        """.format(url=url, user=user, password=password))
 
     @staticmethod
     def verify_fossil(url):
@@ -209,7 +218,7 @@ class Repository(object):
         return r.status_code == requests.codes.ok
 
     @staticmethod
-    def verify_protocol(url, protocol):
+    def verify_protocol(url, protocol, credentials):
         if protocol == Repository.Q_git:
             return Repository.verify_git(url)
         elif protocol == Repository.Q_hg:
@@ -219,7 +228,7 @@ class Repository(object):
         elif protocol == Repository.Q_bzr:
             return Repository.verify_bzr(url)
         elif protocol == Repository.Q_svn:
-            return Repository.verify_svn(url)
+            return Repository.verify_svn(url, credentials)
         elif protocol == Repository.Q_http:
             return Repository.verify_http(url)
         elif protocol == Repository.Q_ftp:
@@ -227,13 +236,13 @@ class Repository(object):
         return None
 
     @staticmethod
-    def try_protocol(url):
+    def try_protocol(url, credentials):
         log.debug("trying all known protocols on " + url)
         if Repository.verify_git(url):
             return Repository.Q_git
         elif Repository.verify_hg(url):
             return Repository.Q_hg
-        elif Repository.verify_svn(url):
+        elif Repository.verify_svn(url, credentials):
             return Repository.Q_svn
         elif Repository.verify_bzr(url):
             return Repository.Q_bzr
@@ -244,16 +253,21 @@ class Repository(object):
     @staticmethod
     def guess_protocol(repository):
         url = repository.getTarget()
+        if P_username in repository.qualifiers:
+            credentials = repository.qualifiers[P_username][0]
+            credentials = credentials.getTarget().split(':')
+        else:
+            credentials = None
         protocol = Repository.guess_protocol_from_url(url)
         if protocol:
-            if not Repository.verify_protocol(url, protocol):
+            if not Repository.verify_protocol(url, protocol, credentials):
                 log.error("ERROR " + url +
                           " does not obey the expected protocol " +
                           str(protocol))
                 return None
             else:
                 return protocol
-        return Repository.try_protocol(url)
+        return Repository.try_protocol(url, credentials)
 
     @staticmethod
     def fixup_url(repository):
