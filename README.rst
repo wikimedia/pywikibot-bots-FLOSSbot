@@ -13,7 +13,7 @@ Installation
 
 * Copy the following to ``~/.bashrc``::
 
-    eval "$(docker run dachary/FLOSSbot install)"
+    eval "$(docker run dachary/flossbot install)"
 
 * Verify that it works::
 
@@ -77,12 +77,12 @@ Release management
 
  - python setup.py sdist upload --sign
  - git push ; git push --tags
- - docker rmi dachary/FLOSSbot
- - docker build --no-cache --tag dachary/FLOSSbot docker
- - docker build --tag dachary/FLOSSbot:0.1.0 docker
+ - docker rmi dachary/flossbot
+ - docker build --no-cache --tag dachary/flossbot docker
+ - docker build --tag dachary/flossbot:0.1.0 docker
  - docker login
- - docker push dachary/FLOSSbot
- - docker push dachary/FLOSSbot:0.1.0
+ - docker push dachary/flossbot
+ - docker push dachary/flossbot:0.1.0
 
 * pypi maintenance
 
