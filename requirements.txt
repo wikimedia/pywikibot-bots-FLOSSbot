@@ -1,7 +1,7 @@
 coverage==4.2
 d2to1==0.2.12.post1
 flake8
--e git+https://gerrit.wikimedia.org/r/p/pywikibot/core@5ad518163b4acb10c4574dab7292206179b4cbbc#egg=pywikibot
+git+https://gerrit.wikimedia.org/r/p/pywikibot/core@master#egg=pywikibot==3.0.dev0
 isort==4.2.5
 mccabe==0.5.2
 mock==2.0.0
