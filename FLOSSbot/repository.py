@@ -32,6 +32,9 @@ P_username = "P554"
 P_protocol = "P2700"
 P_source_code_repository = "P1324"
 
+FLOSS_doc = ("https://www.wikidata.org/wiki/Wikidata:"
+             "WikiProject_Informatics/FLOSS#source_code_repository")
+
 
 class Repository(object):
 
@@ -51,9 +54,67 @@ class Repository(object):
             'repository',
             formatter_class=util.CustomFormatter,
             description=textwrap.dedent("""\
-            Set the software repository statement
+            Set protocol of the source code repository.
+
+            The source code repository[1] responds to a protocol that
+            depends on the VCS. If the protocol qualifier is missing,
+            try a range of VCS to figure out which protocol it
+            implements and set the protocol qualifier accordingly.
+
+            For web sites that host many respositories (such as github
+            or sourceforge), additional heuristics are implemented to
+            figure out the URL of the repository or the protocol. For
+            instance, since github only hosts git repositories, the
+            protocol is always assumed to be git. For sourceforce,
+            the URL of the web interface to the repository is fetched
+            to get the instructions and figure out if it is subversion,
+            mercurial or git.
+
+            When everything fails and the protocol cannot be established
+            with absolute certainty, an error is displayed and an editor
+            should fix the item.
+
+            [1] {doc}
+            """.format(doc=FLOSS_doc)),
+            epilog=textwrap.dedent("""
+            Examples:
+
+            $ FLOSSbot --verbose repository
+
+            INFO WORKING ON https://www.wikidata.org/wiki/Q403539
+            INFO IGNORE \
+https://code.wireshark.org/review/gitweb?p=wireshark.git \
+because it already has a protocol
+            DEBUG trying all known protocols on \
+https://code.wireshark.org/review/p/wireshark.git
+            DEBUG :sh: timeout 30 git ls-remote \
+https://code.wireshark.org/review/p/wireshark.git HEAD
+            DEBUG b'e8f1d2abda939f37d99f272f8a76a191c9a752b4\tHEAD'
+
+            INFO WORKING ON https://www.wikidata.org/wiki/Q4035967
+            DEBUG trying all known protocols on \
+http://git.ceph.com/?p=ceph.git;a=summary
+            DEBUG :sh: timeout 30 git ls-remote \
+http://git.ceph.com/?p=ceph.git;a=summary HEAD
+            DEBUG b"fatal: repository \
+'http://git.ceph.com/?p=ceph.git/' not found"
+            DEBUG b'/bin/sh: 1: HEAD: not found'
+            ...
+            ERROR SKIP http://git.ceph.com/?p=ceph.git;a=summary
+
+            The first item (https://www.wikidata.org/wiki/Q403539) has
+            two source code repository. The first one already has a
+            protocol qualifier and is left untouched. An attempt is
+            made to retrieve it with the git command line and
+            succeeds. The protocol qualifier is set to git.
+
+            The second item (WORKING ON https://www.wikidata.org/wiki/Q4035967)
+            has a source code repository URL which is a gitweb interface to a
+            git repository. It is not useable wiht any protocol, including git,
+            and the program fails with an error so the editor can manually
+            edit the item.
             """),
-            help='Set the software repository statement',
+            help='Set protocol of the source code repository',
             parents=[Repository.get_parser()],
             add_help=False,
         ).set_defaults(
