@@ -198,6 +198,8 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             return Repository.Q_git
         if 'code.launchpad.net' in url:
             return Repository.Q_bzr
+        if 'bitbucket.org' in url:
+            return Repository.Q_hg
         if url.lower().startswith('http'):
             known = (
                 'http://bxr.su/',
