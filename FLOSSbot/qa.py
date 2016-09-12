@@ -80,7 +80,7 @@ class QA(object):
         log.debug(str(item))
         item_dict = item.get()
         clm_dict = item_dict["claims"]
-        header = {'User-Agent': 'FLOSSbot'}
+        headers = {'User-Agent': 'FLOSSbot'}
         for url in [claim.getTarget() for claim in clm_dict['P1324']]:
             if 'github.com' not in url:
                 continue
@@ -89,17 +89,17 @@ class QA(object):
                 log.debug("SKIP: GET " + url +
                           " path does not have exactly two elements")
                 continue
-            r = requests.get(url, header=header)
+            r = requests.get(url, headers=headers)
             if r.status_code != requests.codes.ok:
                 log.debug("ERROR: GET " + url + " failed")
                 continue
             travis = url + "/blob/master/.travis.yml"
-            r = requests.get(travis, header=header)
+            r = requests.get(travis, headers=headers)
             if r.status_code != requests.codes.ok:
                 log.debug("SKIP: GET " + travis + " not found")
                 continue
             travis_ci = "https://travis-ci.org/" + path
-            r = requests.get(travis_ci, header=header)
+            r = requests.get(travis_ci, headers=headers)
             if r.status_code != requests.codes.ok:
                 log.debug("SKIP: GET " + travis_ci + " not found")
                 continue
