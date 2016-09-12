@@ -205,6 +205,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 'http://svn.tuxfamily.org/viewvc.cgi/',
                 'http://svn.filezilla-project.org/filezilla/',
                 'http://svn.gna.org/viewcvs/',
+                'http://svn.apache.org/viewvc/',
                 'http://svn.savannah.gnu.org/viewvc/?root=',
             )
             if url.lower().replace('https', 'http').startswith(known):
@@ -356,6 +357,9 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         m = re.match('https://(.*).codeplex.com/SourceControl/latest', url)
         if m:
             return "https://git01.codeplex.com/" + m.group(1)
+        m = re.match('https?://svn.apache.org/viewvc/(.*)', url)
+        if m:
+            return "https://svn.apache.org/repos/asf/" + m.group(1)
         m = re.match('http://svn.savannah.gnu.org/viewvc/\?root=(.*)', url)
         if m:
             return "svn://svn.sv.gnu.org/" + m.group(1)
