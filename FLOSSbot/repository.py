@@ -19,6 +19,7 @@ import logging
 import os
 import re
 import textwrap
+import time
 
 import pywikibot
 import requests
@@ -147,7 +148,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
           OPTIONAL { ?repo pq:P2700 ?protocol } # try to get the protocol
           FILTER(!BOUND(?protocol)) # and only keep those with no protocol
         } ORDER BY ?item
-        """
+        # """ + str(time.time())
         site = pywikibot.Site(self.args.language_code, "wikidata")
         for item in pg.WikidataSPARQLPageGenerator(QUERY,
                                                    site=site,
