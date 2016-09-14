@@ -199,12 +199,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             } ORDER BY ?item
             """
         query = query + " # " + str(time.time())
+        log.debug(query)
         site = pywikibot.Site(self.args.language_code, "wikidata")
         self.setup_cache(site)
         for item in pg.WikidataSPARQLPageGenerator(query,
                                                    site=site,
                                                    result_type=list):
-            log.info("WORKING ON https://www.wikidata.org/wiki/" + item.id)
+            log.info("WORKING ON https://www.wikidata.org/wiki/" +
+                     item.getID())
             self.fixup_protocol(site, item)
             self.fixup_rank(site, item)
 
@@ -274,7 +276,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 continue
             target_protocol = Repository.guess_protocol(claim)
             if not target_protocol:
-                log.error("ERROR " + claim.getTarget())
+                log.error(claim.getTarget())
                 continue
             protocol = pywikibot.Claim(site, P_protocol, 0)
             protocol.setTarget(target_protocol)
@@ -416,8 +418,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         protocol = Repository.guess_protocol_from_url(url)
         if protocol:
             if not Repository.verify_protocol(url, protocol, credentials):
-                log.error("ERROR " + url +
-                          " does not obey the expected protocol " +
+                log.error(url + " does not obey the expected protocol " +
                           str(protocol))
                 return None
             else:
