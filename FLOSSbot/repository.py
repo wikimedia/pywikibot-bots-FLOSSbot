@@ -92,6 +92,19 @@ class Repository(object):
                   select only the items for which there exists
                   at least one claim with no protocol qualifier
 
+            B) Preferred rank
+
+            When there are multiple source code repository URLs
+            one of them must have the preferred rank. The aim
+            is to display it in an infobox therefore the URL
+            with the http protocol should be preferred over another
+            requiring a VCS software.
+
+            --filter no-preferred
+                  select only the items for which there exists
+                  at more than one claim with no preferred rank
+
+
             [1] {doc}
             """.format(doc=FLOSS_doc)),
             epilog=textwrap.dedent("""
@@ -167,6 +180,18 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
               FILTER(!BOUND(?protocol)) # and only keep those with no protocol
             } ORDER BY ?item
             """
+        elif self.args.filter == 'no-preferred':
+            query = """
+            SELECT ?item (COUNT(?value) AS ?count) WHERE
+            {
+              ?item p:P1324 [
+                 ps:P1324 ?value; wikibase:rank wikibase:NormalRank ].
+              MINUS { ?item p:P1324/wikibase:rank wikibase:PreferredRank. }
+            }
+            GROUP BY ?item
+            HAVING(?count > 1)
+            ORDER BY ?item
+            """
         else:
             query = """
             SELECT DISTINCT ?item WHERE {
@@ -181,6 +206,37 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                                                    result_type=list):
             log.info("WORKING ON https://www.wikidata.org/wiki/" + item.id)
             self.fixup_protocol(site, item)
+            self.fixup_rank(site, item)
+
+    def fixup_rank(self, site, item):
+        item_dict = item.get()
+        clm_dict = item_dict["claims"]
+
+        if len(clm_dict['P1324']) == 1:
+            return False
+
+        if len(clm_dict['P1324']) != 2:
+            log.debug("SKIP more than two URLs is too difficult to fix")
+            return False
+
+        http = []
+        for claim in clm_dict['P1324']:
+            if claim.getRank() == 'preferred':
+                log.debug("SKIP because there already is a preferred URL")
+                return False
+            if P_protocol not in claim.qualifiers:
+                continue
+            for protocol in claim.qualifiers[P_protocol]:
+                if protocol.getTarget() == Repository.Q_http:
+                    http.append(claim)
+        if len(http) != 1:
+            log.debug("SKIP because there are " + str(len(http)) +
+                      " URLs with the http protocol")
+            return False
+        if not self.args.dry_run:
+            http[0].changeRank('preferred')
+        log.info("PREFERRED set to " + http[0].getTarget())
+        return True
 
     def fixup_protocol(self, site, item):
         self.setup_cache(site)
