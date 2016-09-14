@@ -16,7 +16,6 @@
 #
 import argparse
 import logging
-import os
 import re
 import textwrap
 import time
@@ -192,9 +191,8 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 continue
             target_protocol = Repository.guess_protocol(claim)
             if not target_protocol:
-                log.error("SKIP " + claim.getTarget())
-                os.system("firefox https://www.wikidata.org/wiki/" + item.id)
-                raise "error"
+                log.error("ERROR " + claim.getTarget())
+                continue
             protocol = pywikibot.Claim(site, P_protocol, 0)
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
