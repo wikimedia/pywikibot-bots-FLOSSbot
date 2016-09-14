@@ -46,6 +46,12 @@ class Repository(object):
     @staticmethod
     def get_parser():
         parser = argparse.ArgumentParser()
+        parser.add_argument(
+            '--filter',
+            default='',
+            choices=['no-protocol', 'no-preferred'],
+            help='filter with a pre-defined query',
+        )
         return parser
 
     @staticmethod
@@ -54,9 +60,17 @@ class Repository(object):
             'repository',
             formatter_class=util.CustomFormatter,
             description=textwrap.dedent("""\
-            Set protocol of the source code repository.
+            Verify and fix the source code repository claim.
 
-            The source code repository[1] responds to a protocol that
+            The scope of the verifications and the associated
+            modifications is explained below. By default all
+            items that have at least one source code repository
+            claim are considered. It can be restricted with
+            the --filter option.
+
+            A) Protocol
+
+            The source code repository responds to a protocol that
             depends on the VCS. If the protocol qualifier is missing,
             try a range of VCS to figure out which protocol it
             implements and set the protocol qualifier accordingly.
@@ -73,6 +87,10 @@ class Repository(object):
             When everything fails and the protocol cannot be established
             with absolute certainty, an error is displayed and an editor
             should fix the item.
+
+            --filter no-protocol
+                  select only the items for which there exists
+                  at least one claim with no protocol qualifier
 
             [1] {doc}
             """.format(doc=FLOSS_doc)),
@@ -140,16 +158,25 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         Repository.cache = True
 
     def run(self):
-        QUERY = """
-        SELECT DISTINCT ?item WHERE {
-          ?item p:P1324 ?repo.   # for all source code repository statements
-          ?repo ps:P1324 ?value. # that are not null
-          OPTIONAL { ?repo pq:P2700 ?protocol } # try to get the protocol
-          FILTER(!BOUND(?protocol)) # and only keep those with no protocol
-        } ORDER BY ?item
-        # """ + str(time.time())
+        if self.args.filter == 'no-protocol':
+            query = """
+            SELECT DISTINCT ?item WHERE {
+              ?item p:P1324 ?repo.
+              ?repo ps:P1324 ?value.
+              OPTIONAL { ?repo pq:P2700 ?protocol } # try to get the protocol
+              FILTER(!BOUND(?protocol)) # and only keep those with no protocol
+            } ORDER BY ?item
+            """
+        else:
+            query = """
+            SELECT DISTINCT ?item WHERE {
+              ?item wdt:P1324 ?url.
+            } ORDER BY ?item
+            """
+        query = query + " # " + str(time.time())
         site = pywikibot.Site(self.args.language_code, "wikidata")
-        for item in pg.WikidataSPARQLPageGenerator(QUERY,
+        self.setup_cache(site)
+        for item in pg.WikidataSPARQLPageGenerator(query,
                                                    site=site,
                                                    result_type=list):
             log.info("WORKING ON https://www.wikidata.org/wiki/" + item.id)
