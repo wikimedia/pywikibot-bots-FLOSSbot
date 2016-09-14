@@ -165,7 +165,8 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         for claim in clm_dict['P1324']:
             urls.append(claim.getTarget())
 
-        for url in urls:
+        for claim in clm_dict['P1324']:
+            url = claim.getTarget()
             extracted = Repository.extract_repository(url)
             if extracted and extracted not in urls:
                 log.info("ADDING " + extracted +
@@ -174,6 +175,10 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                     site, P_source_code_repository, 0)
                 source_code_repository.setTarget(extracted)
                 item.addClaim(source_code_repository)
+
+                if claim.getRank() == 'normal':
+                    claim.changeRank('preferred')
+                    log.info("PREFERRED " + url + " rank set to preferred")
 
         for claim in clm_dict['P1324']:
             Repository.fixup_url(claim)
