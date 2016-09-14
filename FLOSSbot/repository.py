@@ -153,11 +153,11 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         for item in pg.WikidataSPARQLPageGenerator(QUERY,
                                                    site=site,
                                                    result_type=list):
-            self.fixup(site, item)
+            log.info("WORKING ON https://www.wikidata.org/wiki/" + item.id)
+            self.fixup_protocol(site, item)
 
-    def fixup(self, site, item):
+    def fixup_protocol(self, site, item):
         self.setup_cache(site)
-        log.info("WORKING ON https://www.wikidata.org/wiki/" + item.id)
         item_dict = item.get()
         clm_dict = item_dict["claims"]
 
@@ -174,11 +174,13 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 source_code_repository = pywikibot.Claim(
                     site, P_source_code_repository, 0)
                 source_code_repository.setTarget(extracted)
-                item.addClaim(source_code_repository)
+                if not self.args.dry_run:
+                    item.addClaim(source_code_repository)
 
                 if claim.getRank() == 'normal':
-                    claim.changeRank('preferred')
-                    log.info("PREFERRED " + url + " rank set to preferred")
+                    if not self.args.dry_run:
+                        claim.changeRank('preferred')
+                    log.info("PREFERRED set to " + url)
 
         for claim in clm_dict['P1324']:
             Repository.fixup_url(claim)
@@ -195,7 +197,9 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 raise "error"
             protocol = pywikibot.Claim(site, P_protocol, 0)
             protocol.setTarget(target_protocol)
-            claim.addQualifier(protocol, bot=True)
+            if not self.args.dry_run:
+                claim.addQualifier(protocol, bot=True)
+            log.info("SET protocol of " + claim.getTarget())
 
     @staticmethod
     def guess_protocol_from_url(url):

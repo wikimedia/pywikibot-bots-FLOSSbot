@@ -43,6 +43,11 @@ class FLOSSbot(object):
             default=logging.INFO)
 
         self.parser.add_argument(
+            '--dry-run',
+            action='store_true', default=None,
+            help='no side effect')
+
+        self.parser.add_argument(
             '--language-code',
             default='wikidata',
             choices=['test', 'wikidata'],
