@@ -481,7 +481,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             if r.status_code != requests.codes.ok:
                 return None
             u = re.findall('git clone (git://git.code.sf.net/p/.*/'
-                           '(?:git|code|code-git))', r.text)
+                           '(?:git|code(?:-git)?))', r.text)
             if len(u) == 1:
                 return u[0]
             u = re.findall('hg clone (http://hg.code.sf.net/p/.*/code)',
