@@ -170,6 +170,18 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         Repository.Q_ftp = pywikibot.ItemPage(site, "Q42283", 0)
         Repository.cache = True
 
+    def debug(self, item, message):
+        self.log(log.debug, item, message)
+
+    def info(self, item, message):
+        self.log(log.info, item, message)
+
+    def error(self, item, message):
+        self.log(log.error, item, message)
+
+    def log(self, fun, item, message):
+        fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
+
     def run(self):
         if self.args.filter == 'no-protocol':
             query = """
@@ -205,8 +217,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         for item in pg.WikidataSPARQLPageGenerator(query,
                                                    site=site,
                                                    result_type=list):
-            log.info("WORKING ON https://www.wikidata.org/wiki/" +
-                     item.getID())
             self.fixup_protocol(site, item)
             self.fixup_rank(site, item)
 
@@ -218,13 +228,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             return False
 
         if len(clm_dict['P1324']) != 2:
-            log.debug("SKIP more than two URLs is too difficult to fix")
+            self.debug(item, "SKIP more than two URLs is too difficult to fix")
             return False
 
         http = []
         for claim in clm_dict['P1324']:
             if claim.getRank() == 'preferred':
-                log.debug("SKIP because there already is a preferred URL")
+                self.debug(item,
+                           "SKIP because there already is a preferred URL")
                 return False
             if P_protocol not in claim.qualifiers:
                 continue
@@ -232,12 +243,12 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 if protocol.getTarget() == Repository.Q_http:
                     http.append(claim)
         if len(http) != 1:
-            log.debug("SKIP because there are " + str(len(http)) +
-                      " URLs with the http protocol")
+            self.debug(item, "SKIP because there are " + str(len(http)) +
+                       " URLs with the http protocol")
             return False
         if not self.args.dry_run:
             http[0].changeRank('preferred')
-        log.info("PREFERRED set to " + http[0].getTarget())
+        self.info(item, "PREFERRED set to " + http[0].getTarget())
         return True
 
     def fixup_protocol(self, site, item):
@@ -253,8 +264,8 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             url = claim.getTarget()
             extracted = Repository.extract_repository(url)
             if extracted and extracted not in urls:
-                log.info("ADDING " + extracted +
-                         " as a source repository discovered in " + url)
+                self.debug(item, "ADDING " + extracted +
+                           " as a source repository discovered in " + url)
                 source_code_repository = pywikibot.Claim(
                     site, P_source_code_repository, 0)
                 source_code_repository.setTarget(extracted)
@@ -264,25 +275,26 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 if claim.getRank() == 'normal':
                     if not self.args.dry_run:
                         claim.changeRank('preferred')
-                    log.info("PREFERRED set to " + url)
+                    self.info(item, "PREFERRED set to " + url)
 
         for claim in clm_dict['P1324']:
             Repository.fixup_url(claim)
 
         for claim in clm_dict['P1324']:
             if P_protocol in claim.qualifiers:
-                log.info("IGNORE " + claim.getTarget() +
-                         " because it already has a protocol")
+                self.debug(item, "IGNORE " + claim.getTarget() +
+                           " because it already has a protocol")
                 continue
             target_protocol = Repository.guess_protocol(claim)
             if not target_protocol:
-                log.error(claim.getTarget())
+                self.error(item,
+                           claim.getTarget() + " misses a protocol qualifier")
                 continue
             protocol = pywikibot.Claim(site, P_protocol, 0)
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
-            log.info("SET protocol of " + claim.getTarget())
+            self.info(item, "SET protocol of " + claim.getTarget())
 
     @staticmethod
     def guess_protocol_from_url(url):
@@ -394,7 +406,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
 
     @staticmethod
     def try_protocol(url, credentials):
-        log.debug("trying all known protocols on " + url)
         if Repository.verify_git(url):
             return Repository.Q_git
         elif Repository.verify_hg(url):
@@ -418,8 +429,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         protocol = Repository.guess_protocol_from_url(url)
         if protocol:
             if not Repository.verify_protocol(url, protocol, credentials):
-                log.error(url + " does not obey the expected protocol " +
-                          str(protocol))
                 return None
             else:
                 return protocol
