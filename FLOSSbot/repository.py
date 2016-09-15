@@ -46,12 +46,18 @@ class Repository(object):
     @staticmethod
     def get_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument(
+        select = parser.add_mutually_exclusive_group()
+        select.add_argument(
             '--filter',
             default='',
             choices=['no-protocol', 'no-preferred'],
             help='filter with a pre-defined query',
         )
+        select.add_argument(
+            '--item',
+            default=[],
+            action='append',
+            help='work on this QID (can be repeated)')
         return parser
 
     @staticmethod
@@ -66,7 +72,7 @@ class Repository(object):
             modifications is explained below. By default all
             items that have at least one source code repository
             claim are considered. It can be restricted with
-            the --filter option.
+            the --filter or --item options.
 
             A) Protocol
 
@@ -103,7 +109,6 @@ class Repository(object):
             --filter no-preferred
                   select only the items for which there exists
                   at more than one claim with no preferred rank
-
 
             [1] {doc}
             """.format(doc=FLOSS_doc)),
@@ -183,6 +188,18 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
 
     def run(self):
+        site = pywikibot.Site(self.args.language_code, "wikidata")
+        self.setup_cache(site)
+        if len(self.args.item) > 0:
+            self.run_items(site)
+        else:
+            self.run_query(site)
+
+    def run_items(self, site):
+        for item in self.args.item:
+            self.fixup(site, pywikibot.ItemPage(site, item, 0))
+
+    def run_query(self, site):
         if self.args.filter == 'no-protocol':
             query = """
             SELECT DISTINCT ?item WHERE {
@@ -212,13 +229,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             """
         query = query + " # " + str(time.time())
         log.debug(query)
-        site = pywikibot.Site(self.args.language_code, "wikidata")
-        self.setup_cache(site)
         for item in pg.WikidataSPARQLPageGenerator(query,
                                                    site=site,
                                                    result_type=list):
-            self.fixup_protocol(site, item)
-            self.fixup_rank(site, item)
+            self.fixup(site, item)
+
+    def fixup(self, site, item):
+        self.fixup_protocol(site, item)
+        self.fixup_rank(site, item)
 
     def fixup_rank(self, site, item):
         item_dict = item.get()
