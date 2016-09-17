@@ -48,11 +48,14 @@ class FLOSSbot(object):
             help='no side effect')
 
         self.parser.add_argument(
-            '--language-code',
-            default='wikidata',
-            choices=['test', 'wikidata'],
-            help='wikidata language code',
-        )
+            '--test',
+            action='store_true', default=None,
+            help='use test.wikidata.org instead of wikidata.org')
+
+        self.parser.add_argument(
+            '--user',
+            default=None,
+            help='wikidata user name')
 
         subparsers = self.parser.add_subparsers(
             title='subcommands',

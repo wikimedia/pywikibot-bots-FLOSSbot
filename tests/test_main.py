@@ -17,8 +17,9 @@
 #
 import logging
 
-import FLOSSbot.qa
 import mock
+
+import FLOSSbot.qa
 from FLOSSbot import main
 
 

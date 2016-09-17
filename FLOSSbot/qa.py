@@ -25,19 +25,12 @@ import requests
 from pywikibot import pagegenerators as pg
 
 from FLOSSbot import util
+from FLOSSbot import bot
 
 log = logging.getLogger(__name__)
 
-P_described_at_url = "P973"
-P_archive_url = "P1065"
-P_software_quality_assurance = "P2992"
-Q_continuous_integration = "Q965769"
 
-
-class QA(object):
-
-    def __init__(self, args):
-        self.args = args
+class QA(bot.Bot):
 
     @staticmethod
     def get_parser():
@@ -70,13 +63,12 @@ class QA(object):
             FILTER NOT EXISTS { ?item p:P2992 ?qa }
         }
         """
-        site = pywikibot.Site(self.args.language_code, "wikidata")
         for item in pg.WikidataSPARQLPageGenerator(QUERY,
-                                                   site=site,
+                                                   site=self.site,
                                                    result_type=list):
-            self.fixup(site, item)
+            self.fixup(item)
 
-    def fixup(self, site, item):
+    def fixup(self, item):
         log.debug(str(item))
         item_dict = item.get()
         clm_dict = item_dict["claims"]
@@ -104,18 +96,17 @@ class QA(object):
                 log.debug("SKIP: GET " + travis_ci + " not found")
                 continue
             log.info("FOUND " + travis + " and " + travis_ci)
-            continuous_integration = pywikibot.ItemPage(
-                site, Q_continuous_integration, 0)
 
             software_quality_assurance = pywikibot.Claim(
-                site, P_software_quality_assurance, 0)
-            software_quality_assurance.setTarget(continuous_integration)
+                self.site, self.P_software_quality_assurance, 0)
+            software_quality_assurance.setTarget(self.Q_Continuous_integration)
             item.addClaim(software_quality_assurance)
 
-            described_at_url = pywikibot.Claim(site, P_described_at_url, 0)
+            described_at_url = pywikibot.Claim(self.site,
+                                               self.P_described_at_URL, 0)
             described_at_url.setTarget(travis)
             software_quality_assurance.addQualifier(described_at_url, bot=True)
 
-            archive_url = pywikibot.Claim(site, P_archive_url, 0)
+            archive_url = pywikibot.Claim(self.site, self.P_archive_URL, 0)
             archive_url.setTarget(travis_ci)
             software_quality_assurance.addQualifier(archive_url, bot=True)

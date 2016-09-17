@@ -24,24 +24,17 @@ import pywikibot
 import requests
 from pywikibot import pagegenerators as pg
 
-from FLOSSbot import util
+from FLOSSbot import bot, util
 
 log = logging.getLogger(__name__)
-
-P_username = "P554"
-P_protocol = "P2700"
-P_source_code_repository = "P1324"
 
 FLOSS_doc = ("https://www.wikidata.org/wiki/Wikidata:"
              "WikiProject_Informatics/FLOSS#source_code_repository")
 
 
-class Repository(object):
+class Repository(bot.Bot):
 
     cache = None
-
-    def __init__(self, args):
-        self.args = args
 
     @staticmethod
     def get_parser():
@@ -161,20 +154,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
     def factory(argv):
         return Repository(Repository.get_parser().parse_args(argv))
 
-    @staticmethod
-    def setup_cache(site):
-        if Repository.cache:
-            return
-        Repository.Q_git = pywikibot.ItemPage(site, "Q186055", 0)
-        Repository.Q_svn = pywikibot.ItemPage(site, "Q46794", 0)
-        Repository.Q_hg = pywikibot.ItemPage(site, "Q476543", 0)
-        Repository.Q_fossil = pywikibot.ItemPage(site, "Q1439431", 0)
-        Repository.Q_bzr = pywikibot.ItemPage(site, "Q812656", 0)
-        Repository.Q_cvs = pywikibot.ItemPage(site, "Q467252", 0)
-        Repository.Q_http = pywikibot.ItemPage(site, "Q8777", 0)
-        Repository.Q_ftp = pywikibot.ItemPage(site, "Q42283", 0)
-        Repository.cache = True
-
     def debug(self, item, message):
         self.log(log.debug, item, message)
 
@@ -188,18 +167,16 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
 
     def run(self):
-        site = pywikibot.Site(self.args.language_code, "wikidata")
-        self.setup_cache(site)
         if len(self.args.item) > 0:
-            self.run_items(site)
+            self.run_items()
         else:
-            self.run_query(site)
+            self.run_query()
 
-    def run_items(self, site):
+    def run_items(self):
         for item in self.args.item:
-            self.fixup(site, pywikibot.ItemPage(site, item, 0))
+            self.fixup(pywikibot.ItemPage(self.site, item, 0))
 
-    def run_query(self, site):
+    def run_query(self):
         if self.args.filter == 'no-protocol':
             query = """
             SELECT DISTINCT ?item WHERE {
@@ -230,15 +207,15 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         query = query + " # " + str(time.time())
         log.debug(query)
         for item in pg.WikidataSPARQLPageGenerator(query,
-                                                   site=site,
+                                                   site=self.site,
                                                    result_type=list):
-            self.fixup(site, item)
+            self.fixup(item)
 
-    def fixup(self, site, item):
-        self.fixup_protocol(site, item)
-        self.fixup_rank(site, item)
+    def fixup(self, item):
+        self.fixup_protocol(item)
+        self.fixup_rank(item)
 
-    def fixup_rank(self, site, item):
+    def fixup_rank(self, item):
         item_dict = item.get()
         clm_dict = item_dict["claims"]
 
@@ -255,10 +232,10 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 self.debug(item,
                            "SKIP because there already is a preferred URL")
                 return False
-            if P_protocol not in claim.qualifiers:
+            if self.P_protocol not in claim.qualifiers:
                 continue
-            for protocol in claim.qualifiers[P_protocol]:
-                if protocol.getTarget() == Repository.Q_http:
+            for protocol in claim.qualifiers[self.P_protocol]:
+                if protocol.getTarget() == self.Q_Hypertext_Transfer_Protocol:
                     http.append(claim)
         if len(http) != 1:
             self.debug(item, "SKIP because there are " + str(len(http)) +
@@ -269,8 +246,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         self.info(item, "PREFERRED set to " + http[0].getTarget())
         return True
 
-    def fixup_protocol(self, site, item):
-        self.setup_cache(site)
+    def fixup_protocol(self, item):
         item_dict = item.get()
         clm_dict = item_dict["claims"]
 
@@ -280,12 +256,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
 
         for claim in clm_dict['P1324']:
             url = claim.getTarget()
-            extracted = Repository.extract_repository(url)
+            extracted = self.extract_repository(url)
             if extracted and extracted not in urls:
                 self.debug(item, "ADDING " + extracted +
                            " as a source repository discovered in " + url)
                 source_code_repository = pywikibot.Claim(
-                    site, P_source_code_repository, 0)
+                    self.site,
+                    self.P_source_code_repository,
+                    0)
                 source_code_repository.setTarget(extracted)
                 if not self.args.dry_run:
                     item.addClaim(source_code_repository)
@@ -296,32 +274,31 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                     self.info(item, "PREFERRED set to " + url)
 
         for claim in clm_dict['P1324']:
-            Repository.fixup_url(claim)
+            self.fixup_url(claim)
 
         for claim in clm_dict['P1324']:
-            if P_protocol in claim.qualifiers:
+            if self.P_protocol in claim.qualifiers:
                 self.debug(item, "IGNORE " + claim.getTarget() +
                            " because it already has a protocol")
                 continue
-            target_protocol = Repository.guess_protocol(claim)
+            target_protocol = self.guess_protocol(claim)
             if not target_protocol:
                 self.error(item,
                            claim.getTarget() + " misses a protocol qualifier")
                 continue
-            protocol = pywikibot.Claim(site, P_protocol, 0)
+            protocol = pywikibot.Claim(self.site, self.P_protocol, 0)
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
             self.info(item, "SET protocol of " + claim.getTarget())
 
-    @staticmethod
-    def guess_protocol_from_url(url):
+    def guess_protocol_from_url(self, url):
         if 'github.com' in url:
-            return Repository.Q_git
+            return self.Q_git
         if 'code.launchpad.net' in url:
-            return Repository.Q_bzr
+            return self.Q_GNU_Bazaar
         if 'bitbucket.org' in url:
-            return Repository.Q_hg
+            return self.Q_Mercurial
         if url.lower().startswith('http'):
             known = (
                 'http://bxr.su/',
@@ -333,34 +310,31 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 'http://svn.savannah.gnu.org/viewvc/?root=',
             )
             if url.lower().replace('https', 'http').startswith(known):
-                return Repository.Q_http
+                return self.Q_Hypertext_Transfer_Protocol
         if (re.match('https?://sourceforge.net/p/'
                      '.*/(svn|code|code-0)/HEAD/tree/', url) or
                 re.match('https?://sourceforge.net/p/'
                          '.*?/.*?/ci/(default|master)/tree/', url) or
                 re.match('https?://.*.codeplex.com/SourceControl', url)):
-            return Repository.Q_http
+            return self.Q_Hypertext_Transfer_Protocol
         if url.startswith('git://'):
-            return Repository.Q_git
+            return self.Q_git
         if url.startswith('svn://'):
-            return Repository.Q_svn
+            return self.Q_Apache_Subversion
         if url.startswith('ftp://'):
-            return Repository.Q_ftp
+            return self.Q_File_Transfer_Protocol
         return None
 
-    @staticmethod
-    def verify_git(url):
+    def verify_git(self, url):
         return util.sh_bool("timeout 30 git ls-remote " + url + " HEAD")
 
-    @staticmethod
-    def verify_hg(url):
+    def verify_hg(self, url):
         return util.sh_bool("""
         set -e
         timeout 30 hg identify {url}
         """.format(url=url))
 
-    @staticmethod
-    def verify_svn(url, credentials):
+    def verify_svn(self, url, credentials):
         if credentials:
             user = '--username=' + credentials[0]
         else:
@@ -374,8 +348,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         timeout 30 svn info {url} {user} {password}
         """.format(url=url, user=user, password=password))
 
-    @staticmethod
-    def verify_fossil(url):
+    def verify_fossil(self, url):
         return util.sh_bool("""
         set -e
         rm -fr /tmp/tmpclone
@@ -385,75 +358,68 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             grep -q -m 1 -e 'Round-trips'
         """.format(url=url))
 
-    @staticmethod
-    def verify_bzr(url):
+    def verify_bzr(self, url):
         return util.sh_bool("""
         set -e
         timeout 30 bzr version-info {url}
         """.format(url=url))
 
-    @staticmethod
-    def verify_ftp(url):
+    def verify_ftp(self, url):
         return util.sh_bool("""
         set -e
         timeout 30 lftp -e 'dir; quit' {url}
         """.format(url=url))
 
-    @staticmethod
-    def verify_http(url):
+    def verify_http(self, url):
         r = requests.head(url, allow_redirects=True)
         return r.status_code == requests.codes.ok
 
-    @staticmethod
-    def verify_protocol(url, protocol, credentials):
-        if protocol == Repository.Q_git:
-            return Repository.verify_git(url)
-        elif protocol == Repository.Q_hg:
-            return Repository.verify_hg(url)
-        elif protocol == Repository.Q_fossil:
-            return Repository.verify_fossil(url)
-        elif protocol == Repository.Q_bzr:
-            return Repository.verify_bzr(url)
-        elif protocol == Repository.Q_svn:
-            return Repository.verify_svn(url, credentials)
-        elif protocol == Repository.Q_http:
-            return Repository.verify_http(url)
-        elif protocol == Repository.Q_ftp:
-            return Repository.verify_ftp(url)
+    def verify_protocol(self, url, protocol, credentials):
+        if protocol == self.Q_git:
+            return self.verify_git(url)
+        elif protocol == self.Q_Mercurial:
+            return self.verify_hg(url)
+        elif protocol == self.Q_Fossil:
+            return self.verify_fossil(url)
+        elif protocol == self.Q_GNU_Bazaar:
+            return self.verify_bzr(url)
+        elif protocol == self.Q_Apache_Subversion:
+            return self.verify_svn(url, credentials)
+        elif protocol == self.Q_Hypertext_Transfer_Protocol:
+            return self.verify_http(url)
+        elif protocol == self.Q_File_Transfer_Protocol:
+            return self.verify_ftp(url)
         return None
 
-    @staticmethod
-    def try_protocol(url, credentials):
-        if Repository.verify_git(url):
-            return Repository.Q_git
-        elif Repository.verify_hg(url):
-            return Repository.Q_hg
-        elif Repository.verify_svn(url, credentials):
-            return Repository.Q_svn
-        elif Repository.verify_bzr(url):
-            return Repository.Q_bzr
-        elif Repository.verify_fossil(url):
-            return Repository.Q_fossil
+    def try_protocol(self, url, credentials):
+        if self.verify_git(url):
+            return self.Q_git
+        elif self.verify_hg(url):
+            return self.Q_Mercurial
+        elif self.verify_svn(url, credentials):
+            return self.Q_Apache_Subversion
+        elif self.verify_bzr(url):
+            return self.Q_GNU_Bazaar
+        elif self.verify_fossil(url):
+            return self.Q_Fossil
         return None
 
-    @staticmethod
-    def guess_protocol(repository):
+    def guess_protocol(self, repository):
         url = repository.getTarget()
-        if P_username in repository.qualifiers:
-            credentials = repository.qualifiers[P_username][0]
+        if self.P_username in repository.qualifiers:
+            credentials = repository.qualifiers[self.P_username][0]
             credentials = credentials.getTarget().split(':')
         else:
             credentials = None
-        protocol = Repository.guess_protocol_from_url(url)
+        protocol = self.guess_protocol_from_url(url)
         if protocol:
-            if not Repository.verify_protocol(url, protocol, credentials):
+            if not self.verify_protocol(url, protocol, credentials):
                 return None
             else:
                 return protocol
-        return Repository.try_protocol(url, credentials)
+        return self.try_protocol(url, credentials)
 
-    @staticmethod
-    def fixup_url(repository):
+    def fixup_url(self, repository):
         url = repository.getTarget()
         new_url = None
 
@@ -472,8 +438,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         else:
             return False
 
-    @staticmethod
-    def extract_repository(url):
+    def extract_repository(self, url):
         m = re.match('https://(.*).codeplex.com/SourceControl/latest', url)
         if m:
             return "https://git01.codeplex.com/" + m.group(1)
