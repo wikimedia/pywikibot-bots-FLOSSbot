@@ -14,3 +14,6 @@ dist
 virtualenv/
 AUTHORS
 build/
+apicache/
+*.lwp
+*.ctrl
