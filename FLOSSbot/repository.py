@@ -369,8 +369,11 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         """.format(url=url))
 
     def verify_http(self, url):
-        r = requests.head(url, allow_redirects=True)
-        return r.status_code == requests.codes.ok
+        try:
+            r = requests.head(url, allow_redirects=True)
+            return r.status_code == requests.codes.ok
+        except:
+            return False
 
     def verify_protocol(self, url, protocol, credentials):
         if protocol == self.Q_git:
@@ -458,32 +461,42 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             return "svn://svn.gna.org/svn/" + m.group(1)
         if re.match('https?://sourceforge.net/p/'
                     '.*/(git|code|code-git)/ci/(default|master)/tree/', url):
-            r = requests.get(url)
-            if r.status_code != requests.codes.ok:
-                return None
-            u = re.findall('git clone (git://git.code.sf.net/p/.*/'
-                           '(?:git|code(?:-git)?))', r.text)
-            if len(u) == 1:
-                return u[0]
-            u = re.findall('hg clone (http://hg.code.sf.net/p/.*/code)',
-                           r.text)
-            if len(u) >= 1:
-                return u[0]
+            try:
+                r = requests.get(url)
+                if r.status_code != requests.codes.ok:
+                    return None
+                u = re.findall('git clone (git://git.code.sf.net/p/.*/'
+                               '(?:git|code(?:-git)?))', r.text)
+                if len(u) == 1:
+                    return u[0]
+                u = re.findall('hg clone (http://hg.code.sf.net/p/.*/code)',
+                               r.text)
+                if len(u) >= 1:
+                    return u[0]
+            except requests.ConnectionError as e:
+                pass
         if re.match('https?://sourceforge.net/p/'
                     '.*?/.*?/ci/(default|master)/tree/', url):
-            r = requests.get(url)
-            if r.status_code != requests.codes.ok:
-                return None
-            u = re.findall('hg clone (http://hg.code.sf.net/p/.*?) ', r.text)
-            if len(u) >= 1:
-                return u[0]
+            try:
+                r = requests.get(url)
+                if r.status_code != requests.codes.ok:
+                    return None
+                u = re.findall('hg clone (http://hg.code.sf.net/p/.*?) ',
+                               r.text)
+                if len(u) >= 1:
+                    return u[0]
+            except requests.ConnectionError as e:
+                pass
         if re.match('https?://sourceforge.net/p/'
                     '.*/(svn|code|code-0)/HEAD/tree/', url):
-            r = requests.get(url)
-            if r.status_code != requests.codes.ok:
-                return None
-            u = re.findall('svn checkout (svn://svn.code.sf.net.*/trunk)',
-                           r.text)
-            if len(u) == 1:
-                return u[0]
+            try:
+                r = requests.get(url)
+                if r.status_code != requests.codes.ok:
+                    return None
+                u = re.findall('svn checkout (svn://svn.code.sf.net.*/trunk)',
+                               r.text)
+                if len(u) == 1:
+                    return u[0]
+            except requests.ConnectionError as e:
+                pass
         return None
