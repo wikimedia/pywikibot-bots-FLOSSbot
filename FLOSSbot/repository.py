@@ -352,8 +352,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         return util.sh_bool("""
         set -e
         rm -fr /tmp/tmpclone
-        mkdir /tmp/tmpclone
-        cd /tmp/tmpclone
         timeout 30 fossil clone {url} /tmp/tmpclone |
             grep -q -m 1 -e 'Round-trips'
         """.format(url=url))
