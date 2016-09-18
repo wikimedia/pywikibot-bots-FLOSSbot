@@ -298,7 +298,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         if 'code.launchpad.net' in url:
             return self.Q_GNU_Bazaar
         if 'bitbucket.org' in url:
-            return self.Q_Mercurial
+            return self.Q_git
         if url.lower().startswith('http'):
             known = (
                 'http://bxr.su/',
