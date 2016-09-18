@@ -58,11 +58,14 @@ class QA(bot.Bot):
 
     def run(self):
         QUERY = """
-        SELECT DISTINCT ?item WHERE {
-            ?item wdt:P1324 ?repo FILTER CONTAINS(str(?repo), "github.com").
-            FILTER NOT EXISTS { ?item p:P2992 ?qa }
-        }
-        """
+        SELECT DISTINCT ?item WHERE {{
+            ?item wdt:{source_code_repository}
+               ?repo FILTER CONTAINS(str(?repo), "github.com").
+            FILTER NOT EXISTS {{ ?item p:{software_quality_assurance} ?qa }}
+        }}
+        """.format(
+            source_code_repository=self.P_source_code_repository,
+            software_quality_assurance=self.P_software_quality_assurance)
         for item in pg.WikidataSPARQLPageGenerator(QUERY,
                                                    site=self.site,
                                                    result_type=list):
@@ -73,7 +76,8 @@ class QA(bot.Bot):
         item_dict = item.get()
         clm_dict = item_dict["claims"]
         headers = {'User-Agent': 'FLOSSbot'}
-        for url in [claim.getTarget() for claim in clm_dict['P1324']]:
+        for url in [claim.getTarget() for claim in
+                    clm_dict[self.P_source_code_repository]]:
             if 'github.com' not in url:
                 continue
             path = os.path.normpath(urlparse(url).path)[1:]

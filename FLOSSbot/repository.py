@@ -179,31 +179,34 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
     def run_query(self):
         if self.args.filter == 'no-protocol':
             query = """
-            SELECT DISTINCT ?item WHERE {
-              ?item p:P1324 ?repo.
-              ?repo ps:P1324 ?value.
-              OPTIONAL { ?repo pq:P2700 ?protocol } # try to get the protocol
+            SELECT DISTINCT ?item WHERE {{
+              ?item p:{source_code_repository} ?repo.
+              ?repo ps:{source_code_repository} ?value.
+              OPTIONAL {{ ?repo pq:{protocol} ?protocol }} # get the protocol
               FILTER(!BOUND(?protocol)) # and only keep those with no protocol
-            } ORDER BY ?item
-            """
+            }} ORDER BY ?item
+            """.format(source_code_repository=self.P_source_code_repository,
+                       protocol=self.P_protocol)
         elif self.args.filter == 'no-preferred':
             query = """
             SELECT ?item (COUNT(?value) AS ?count) WHERE
-            {
-              ?item p:P1324 [
-                 ps:P1324 ?value; wikibase:rank wikibase:NormalRank ].
-              MINUS { ?item p:P1324/wikibase:rank wikibase:PreferredRank. }
-            }
+            {{
+              ?item p:{source_code_repository} [
+                 ps:{source_code_repository} ?value;
+                 wikibase:rank wikibase:NormalRank ].
+              MINUS {{ ?item p:{source_code_repository}/wikibase:rank
+                       wikibase:PreferredRank. }}
+            }}
             GROUP BY ?item
             HAVING(?count > 1)
             ORDER BY ?item
-            """
+            """.format(source_code_repository=self.P_source_code_repository)
         else:
             query = """
-            SELECT DISTINCT ?item WHERE {
-              ?item wdt:P1324 ?url.
-            } ORDER BY ?item
-            """
+            SELECT DISTINCT ?item WHERE {{
+              ?item wdt:{source_code_repository} ?url.
+            }} ORDER BY ?item
+            """.format(source_code_repository=self.P_source_code_repository)
         query = query + " # " + str(time.time())
         log.debug(query)
         for item in pg.WikidataSPARQLPageGenerator(query,
@@ -219,15 +222,15 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         item_dict = item.get()
         clm_dict = item_dict["claims"]
 
-        if len(clm_dict['P1324']) == 1:
+        if len(clm_dict[self.P_source_code_repository]) == 1:
             return False
 
-        if len(clm_dict['P1324']) != 2:
+        if len(clm_dict[self.P_source_code_repository]) != 2:
             self.debug(item, "SKIP more than two URLs is too difficult to fix")
             return False
 
         http = []
-        for claim in clm_dict['P1324']:
+        for claim in clm_dict[self.P_source_code_repository]:
             if claim.getRank() == 'preferred':
                 self.debug(item,
                            "SKIP because there already is a preferred URL")
@@ -251,10 +254,10 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         clm_dict = item_dict["claims"]
 
         urls = []
-        for claim in clm_dict['P1324']:
+        for claim in clm_dict[self.P_source_code_repository]:
             urls.append(claim.getTarget())
 
-        for claim in clm_dict['P1324']:
+        for claim in clm_dict[self.P_source_code_repository]:
             url = claim.getTarget()
             extracted = self.extract_repository(url)
             if extracted and extracted not in urls:
@@ -273,10 +276,10 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                         claim.changeRank('preferred')
                     self.info(item, "PREFERRED set to " + url)
 
-        for claim in clm_dict['P1324']:
+        for claim in clm_dict[self.P_source_code_repository]:
             self.fixup_url(claim)
 
-        for claim in clm_dict['P1324']:
+        for claim in clm_dict[self.P_source_code_repository]:
             if self.P_protocol in claim.qualifiers:
                 self.debug(item, "IGNORE " + claim.getTarget() +
                            " because it already has a protocol")
