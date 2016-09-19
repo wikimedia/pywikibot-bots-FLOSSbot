@@ -282,6 +282,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
+                self.set_retrieved(item, claim)
             self.info(item, "SET protocol of " + claim.getTarget())
 
     def guess_protocol_from_url(self, url):
