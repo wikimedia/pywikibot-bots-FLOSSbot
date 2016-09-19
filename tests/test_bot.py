@@ -68,6 +68,10 @@ class TestBot(object):
             assert 1 == len(bot.entities['property'])
             bot.clear_entity_label(property)
             assert 0 == len(bot.entities['property'])
+            for i in range(120):
+                if (bot.lookup_entity(
+                        attr, type='property') is None):
+                    break
             property = bot.__getattribute__(attr)
             assert 1 == len(bot.entities['property'])
 

@@ -148,5 +148,8 @@ class Bot(object):
         found = self.lookup_entity(label, type=type)
         if not found and self.args.test:
             self.create_entity(type, label)
-            found = self.lookup_entity(label, type=type)
+            for i in range(120):
+                found = self.lookup_entity(label, type=type)
+                if found is not None:
+                    break
         return found
