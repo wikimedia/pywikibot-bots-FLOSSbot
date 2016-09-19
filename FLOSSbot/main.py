@@ -18,7 +18,7 @@ import argparse
 import logging
 import textwrap
 
-from FLOSSbot import qa, repository, util
+from FLOSSbot import bot, qa, repository, util
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
 
@@ -34,7 +34,8 @@ class FLOSSbot(object):
             The documentation for each subcommand can be displayed with
 
                FLOSSbot subcommand --help
-            """))
+            """),
+            parents=[bot.Bot.get_parser()])
 
         self.parser.add_argument(
             '-v', '--verbose',
@@ -46,16 +47,6 @@ class FLOSSbot(object):
             '--dry-run',
             action='store_true', default=None,
             help='no side effect')
-
-        self.parser.add_argument(
-            '--test',
-            action='store_true', default=None,
-            help='use test.wikidata.org instead of wikidata.org')
-
-        self.parser.add_argument(
-            '--user',
-            default=None,
-            help='wikidata user name')
 
         subparsers = self.parser.add_subparsers(
             title='subcommands',

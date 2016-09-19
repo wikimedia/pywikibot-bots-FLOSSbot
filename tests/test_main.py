@@ -26,7 +26,7 @@ from FLOSSbot import main
 class TestFLOSSbot(object):
 
     @mock.patch.object(FLOSSbot.qa.QA, 'run')
-    def test_run(self, m_run):
+    def test_run_main(self, m_run):
         f = main.FLOSSbot()
 
         argv = ['qa']
@@ -37,6 +37,15 @@ class TestFLOSSbot(object):
         f.run(argv)
         assert (logging.getLogger('FLOSSbot').getEffectiveLevel() ==
                 logging.INFO)
+
+    @mock.patch.object(FLOSSbot.repository.Repository, 'run')
+    def test_run_repository(self, m_run):
+        f = main.FLOSSbot()
+
+        argv = ['repository']
+        f.run(['--verbose'] + argv)
+        assert (logging.getLogger('FLOSSbot').getEffectiveLevel() ==
+                logging.DEBUG)
 
 # Local Variables:
 # compile-command: "cd .. ; tox -e py3 tests/test_main.py"

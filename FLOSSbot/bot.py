@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+import argparse
 import logging
 
 import pywikibot
@@ -35,6 +36,28 @@ class Bot(object):
             self.wikidata_site = pywikibot.Site(code="wikidata",
                                                 fam="wikidata")
         self.reset_cache()
+
+    @staticmethod
+    def get_parser():
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument(
+            '--test',
+            action='store_true', default=None,
+            help='use test.wikidata.org instead of wikidata.org')
+        parser.add_argument(
+            '--user',
+            default=None,
+            help='wikidata user name')
+        return parser
+
+    @staticmethod
+    def factory(cls, argv):
+        parser = argparse.ArgumentParser(
+            parents=[Bot.get_parser()],
+            add_help=False,
+            conflict_handler='resolve')
+        cls.set_subparser(parser.add_subparsers())
+        return cls(parser.parse_args(argv))
 
     def debug(self, item, message):
         self.log(log.debug, item, message)

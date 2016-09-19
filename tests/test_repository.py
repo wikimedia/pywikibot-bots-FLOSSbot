@@ -15,8 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import argparse
-
 from FLOSSbot.repository import Repository
 from tests.wikidata import TestWikidata
 
@@ -27,10 +25,10 @@ class TestRepository(object):
         TestWikidata().login()
 
     def setup(self):
-        self.r = Repository(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-        ))
+        self.r = Repository.factory([
+            '--user=FLOSSbotCI',
+            '--test',
+        ])
 
     def test_guessproto__github_is_git(self):
         assert(

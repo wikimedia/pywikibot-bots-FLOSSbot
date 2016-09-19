@@ -38,7 +38,7 @@ class Repository(bot.Bot):
 
     @staticmethod
     def get_parser():
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(add_help=False)
         select = parser.add_mutually_exclusive_group()
         select.add_argument(
             '--filter',
@@ -146,13 +146,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             help='Set protocol of the source code repository',
             parents=[Repository.get_parser()],
             add_help=False,
+            conflict_handler='resolve',
         ).set_defaults(
             func=Repository,
         )
 
     @staticmethod
     def factory(argv):
-        return Repository(Repository.get_parser().parse_args(argv))
+        return bot.Bot.factory(Repository, argv)
 
     def run(self):
         if len(self.args.item) > 0:

@@ -24,8 +24,7 @@ import pywikibot
 import requests
 from pywikibot import pagegenerators as pg
 
-from FLOSSbot import util
-from FLOSSbot import bot
+from FLOSSbot import bot, util
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class QA(bot.Bot):
 
     @staticmethod
     def get_parser():
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(add_help=False)
         return parser
 
     @staticmethod
@@ -48,13 +47,14 @@ class QA(bot.Bot):
             help='Set the software quality assurance statement',
             parents=[QA.get_parser()],
             add_help=False,
+            conflict_handler='resolve',
         ).set_defaults(
             func=QA,
         )
 
     @staticmethod
     def factory(argv):
-        return QA(QA.get_parser().parse_args(argv))
+        return bot.Bot.factory(QA, argv)
 
     def run(self):
         QUERY = """
