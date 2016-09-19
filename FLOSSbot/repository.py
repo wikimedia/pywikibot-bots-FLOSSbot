@@ -154,18 +154,6 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
     def factory(argv):
         return Repository(Repository.get_parser().parse_args(argv))
 
-    def debug(self, item, message):
-        self.log(log.debug, item, message)
-
-    def info(self, item, message):
-        self.log(log.info, item, message)
-
-    def error(self, item, message):
-        self.log(log.error, item, message)
-
-    def log(self, fun, item, message):
-        fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
-
     def run(self):
         if len(self.args.item) > 0:
             self.run_items()

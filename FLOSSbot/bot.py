@@ -36,6 +36,18 @@ class Bot(object):
                                                 fam="wikidata")
         self.reset_cache()
 
+    def debug(self, item, message):
+        self.log(log.debug, item, message)
+
+    def info(self, item, message):
+        self.log(log.info, item, message)
+
+    def error(self, item, message):
+        self.log(log.error, item, message)
+
+    def log(self, fun, item, message):
+        fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
+
     def reset_cache(self):
         self.entities = {
             'property': {},
