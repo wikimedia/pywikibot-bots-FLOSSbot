@@ -17,6 +17,11 @@
 #
 import argparse
 import logging
+import random
+import string
+from datetime import date
+
+import pywikibot
 
 from FLOSSbot.bot import Bot
 from tests.wikidata import TestWikidata
@@ -83,3 +88,24 @@ class TestBot(object):
                     new_content[property]['datatype']), attr
             assert (datatype ==
                     wikidata_content[wikidata_property]['datatype']), attr
+
+    def test_set_retrieved(self):
+        bot = Bot(argparse.Namespace(
+            test=True,
+            user='FLOSSbotCI',
+            dry_run=False,
+            verification_delay=30,
+        ))
+        name = ''.join(random.choice(
+            string.ascii_lowercase) for _ in range(16))
+        item = bot.__getattribute__('Q_' + name)
+        claim = pywikibot.Claim(bot.site,
+                                bot.P_source_code_repository,
+                                0)
+        claim.setTarget("http://repo.com/some")
+        item.addClaim(claim)
+        bot.set_retrieved(item, claim)
+        assert bot.need_verification(claim) is False
+        bot.set_retrieved(item, claim, date(1965, 11, 2))
+        assert bot.need_verification(claim) is True
+        bot.clear_entity_label(item.getID())

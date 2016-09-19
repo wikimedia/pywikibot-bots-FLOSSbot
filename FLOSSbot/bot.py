@@ -16,6 +16,7 @@
 #
 import argparse
 import logging
+from datetime import datetime, timedelta
 
 import pywikibot
 
@@ -48,6 +49,11 @@ class Bot(object):
             '--user',
             default=None,
             help='wikidata user name')
+        parser.add_argument(
+            '--verification-delay',
+            type=int,
+            default=30,
+            help='days to wait before verifying a claim again')
         return parser
 
     @staticmethod
@@ -107,7 +113,6 @@ class Bot(object):
 
     def create_entity(self, type, name):
         found = self.search_entity(self.wikidata_site, name, type=type)
-        assert found, type + " " + name + " must exist wikidata"
         entity = {
             "labels": {
                 "en": {
@@ -117,6 +122,7 @@ class Bot(object):
             },
         }
         if type == 'property':
+            assert found, type + " " + name + " must exist wikidata"
             id = found['id']
             found = self.wikidata_site.loadcontent({'ids': id}, 'datatype')
             assert found, "datatype of " + id + " " + name + " is not found"
@@ -153,3 +159,33 @@ class Bot(object):
                 if found is not None:
                     break
         return found
+
+    def need_verification(self, claim):
+        now = datetime.utcnow()
+        if self.P_retrieved in claim.qualifiers:
+            previous = claim.qualifiers[self.P_retrieved][0]
+            previous = previous.getTarget()
+            previous = datetime(year=previous.year,
+                                month=previous.month,
+                                day=previous.day)
+            if now - previous > timedelta(
+                    days=self.args.verification_delay):
+                return True
+        return False
+
+    def set_retrieved(self, item, claim, now=datetime.utcnow()):
+        when = pywikibot.WbTime(now.year, now.month, now.day)
+        if self.P_retrieved in claim.qualifiers:
+            self.debug(item, "updating retrieved")
+            retrieved = claim.qualifiers[self.P_retrieved][0]
+            retrieved.setTarget(when)
+            if not self.args.dry_run:
+                self.site.save_claim(claim)
+        else:
+            self.debug(item, "setting retrieved")
+            retrieved = pywikibot.Claim(self.site,
+                                        self.P_retrieved,
+                                        isQualifier=True)
+            retrieved.setTarget(when)
+            if not self.args.dry_run:
+                claim.addQualifier(retrieved, bot=True)
