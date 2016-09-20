@@ -379,9 +379,14 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         """.format(url=url))
 
     def verify_bzr(self, url):
+        #
+        # prefer branches over version-info because
+        # it fails on https://golem.ph.utexas.edu/~distler/code/instiki/svn/
+        # with bzr: ERROR: https://golem.ph... is not a local path.
+        #
         return util.sh_bool("""
         set -e
-        timeout 30 bzr version-info {url}
+        timeout 30 bzr branches {url}
         """.format(url=url))
 
     def verify_ftp(self, url):
