@@ -163,7 +163,9 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
 
     def run_items(self):
         for item in self.args.item:
-            self.fixup(pywikibot.ItemPage(self.site, item, 0))
+            item = pywikibot.ItemPage(self.site, item, 0)
+            self.fixup(item)
+            self.verify(item)
 
     def run_query(self):
         if self.args.filter == 'no-protocol':
@@ -202,6 +204,33 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                                                    site=self.site,
                                                    result_type=list):
             self.fixup(item)
+            self.verify(item)
+
+    def verify(self, item):
+        item_dict = item.get()
+        clm_dict = item_dict["claims"]
+
+        status = {}
+        for claim in clm_dict[self.P_source_code_repository]:
+            url = claim.getTarget()
+            if not self.need_verification(claim):
+                status[url] = 'no need'
+                continue
+            if self.P_protocol not in claim.qualifiers:
+                status[url] = 'no protocol'
+                continue
+            protocol = claim.qualifiers[self.P_protocol][0].getTarget()
+            self.debug(item, url + " protocol " + protocol.getID() + " " +
+                       protocol.get()['labels']['en'])
+            credentials = self.get_credentials(claim)
+            if self.verify_protocol(url, protocol, credentials):
+                self.info(item, "VERIFIED " + url)
+                status[url] = 'verified'
+                self.set_retrieved(item, claim)
+            else:
+                self.error(item, "VERIFY FAIL " + url)
+                status[url] = 'fail'
+        return status
 
     def fixup(self, item):
         self.fixup_protocol(item)
@@ -379,7 +408,8 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             return self.verify_bzr(url)
         elif protocol == self.Q_Apache_Subversion:
             return self.verify_svn(url, credentials)
-        elif protocol == self.Q_Hypertext_Transfer_Protocol:
+        elif (protocol == self.Q_Hypertext_Transfer_Protocol or
+              protocol == self.Q_HTTPS):
             return self.verify_http(url)
         elif protocol == self.Q_File_Transfer_Protocol:
             return self.verify_ftp(url)
@@ -398,13 +428,17 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             return self.Q_Fossil
         return None
 
-    def guess_protocol(self, repository):
-        url = repository.getTarget()
-        if self.P_username in repository.qualifiers:
-            credentials = repository.qualifiers[self.P_username][0]
+    def get_credentials(self, repository):
+        if self.P_website_username in repository.qualifiers:
+            credentials = repository.qualifiers[self.P_website_username][0]
             credentials = credentials.getTarget().split(':')
         else:
             credentials = None
+        return credentials
+
+    def guess_protocol(self, repository):
+        url = repository.getTarget()
+        credentials = self.get_credentials(repository)
         protocol = self.guess_protocol_from_url(url)
         if protocol:
             if not self.verify_protocol(url, protocol, credentials):
@@ -426,7 +460,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             new_url = "https://code.launchpad.net/" + m.group(1)
 
         if new_url:
-            print("REPLACE " + url + " with " + new_url)
+            self.info(repository, "REPLACE " + url + " with " + new_url)
             repository.changeTarget(new_url)
             return True
         else:

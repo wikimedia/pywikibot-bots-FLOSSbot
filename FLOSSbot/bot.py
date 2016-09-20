@@ -122,7 +122,7 @@ class Bot(object):
             },
         }
         if type == 'property':
-            assert found, type + " " + name + " must exist wikidata"
+            assert found, type + " " + name + " must exist in wikidata"
             id = found['id']
             found = self.wikidata_site.loadcontent({'ids': id}, 'datatype')
             assert found, "datatype of " + id + " " + name + " is not found"
@@ -168,10 +168,10 @@ class Bot(object):
             previous = datetime(year=previous.year,
                                 month=previous.month,
                                 day=previous.day)
-            if now - previous > timedelta(
-                    days=self.args.verification_delay):
-                return True
-        return False
+            return (now - previous >=
+                    timedelta(days=self.args.verification_delay))
+        else:
+            return True
 
     def set_retrieved(self, item, claim, now=datetime.utcnow()):
         when = pywikibot.WbTime(now.year, now.month, now.day)

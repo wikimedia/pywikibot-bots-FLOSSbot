@@ -15,6 +15,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+import argparse
+
+import pywikibot
+
 from FLOSSbot.repository import Repository
 from tests.wikidata import TestWikidata
 
@@ -87,3 +91,38 @@ class TestRepository(object):
         assert(
             self.r.guess_protocol_from_url('example.org')
             is None)
+
+    def test_verify(self):
+        r = Repository(argparse.Namespace(
+            test=True,
+            user='FLOSSbotCI',
+            dry_run=False,
+            verification_delay=30,
+        ))
+        item = r.__getattribute__('Q_' + TestWikidata.random_name())
+        claim = pywikibot.Claim(r.site,
+                                r.P_source_code_repository,
+                                0)
+        url = "http://github.com/ceph/ceph"
+        claim.setTarget(url)
+        item.addClaim(claim)
+
+        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
+        assert {url: 'no protocol'} == r.verify(to_verify)
+
+        protocol = pywikibot.Claim(r.site, r.P_protocol, 0)
+        protocol.setTarget(r.Q_git)
+        claim.addQualifier(protocol, bot=True)
+
+        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
+        assert {url: 'verified'} == r.verify(to_verify)
+
+        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
+        assert {url: 'no need'} == r.verify(to_verify)
+
+        claim.changeTarget("http://example.org")
+
+        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
+        assert {"http://example.org": 'fail'} == r.verify(to_verify)
+
+        r.clear_entity_label(item.getID())
