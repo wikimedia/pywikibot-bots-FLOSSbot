@@ -19,6 +19,7 @@ import argparse
 import logging
 from datetime import date
 
+import pytest
 import pywikibot
 
 from FLOSSbot.bot import Bot
@@ -105,3 +106,43 @@ class TestBot(object):
         bot.set_retrieved(item, claim, date(1965, 11, 2))
         assert bot.need_verification(claim) is True
         bot.clear_entity_label(item.getID())
+
+    def test_search_entity(self):
+        bot = Bot(argparse.Namespace(
+            test=True,
+            user='FLOSSbotCI',
+        ))
+        name = TestWikidata.random_name()
+        entity = {
+            "labels": {
+                "en": {
+                    "language": "en",
+                    "value": name,
+                }
+            },
+        }
+        first = bot.site.editEntity({'new': 'item'}, entity)
+        first = pywikibot.ItemPage(bot.site, first['entity']['id'], 0)
+        second = bot.site.editEntity({'new': 'item'}, entity)
+        second = pywikibot.ItemPage(bot.site, second['entity']['id'], 0)
+
+        with pytest.raises(ValueError) as e:
+            bot.search_entity(bot.site, name, type='item')
+        assert "found multiple items" in str(e.value)
+
+        claim = pywikibot.Claim(bot.site, bot.P_instance_of, 0)
+        claim.setTarget(bot.Q_Wikimedia_disambiguation_page)
+        first.addClaim(claim)
+
+        found = bot.search_entity(bot.site, name, type='item')
+        assert found.getID() == second.getID()
+
+        bot.site.editEntity({'new': 'item'}, entity)
+
+        with pytest.raises(ValueError) as e:
+            bot.search_entity(bot.site, name, type='item')
+        assert "found multiple items" in str(e.value)
+
+        Bot.authoritative['test'][name] = second.getID()
+        found = bot.search_entity(bot.site, name, type='item')
+        assert found.getID() == second.getID()

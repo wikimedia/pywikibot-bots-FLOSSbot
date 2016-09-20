@@ -95,16 +95,56 @@ class Bot(object):
             self.entities[type][name] = found
         return found
 
+    #
+    # Hardcode the desired wikidata item when there are
+    # multiple items with the same english label and no
+    # trivial way to disambiguate them.
+    #
+    authoritative = {
+        'wikidata': {
+            'git': 'Q186055',
+            'Fossil': 'Q1439431',
+        },
+        'test': {
+        },
+    }
+
     def search_entity(self, site, name, **kwargs):
-        found = None
+        if name in Bot.authoritative[site.code]:
+            candidate = pywikibot.ItemPage(
+                site, Bot.authoritative[site.code][name], 0)
+            if candidate.get()['labels']['en'] == name:
+                return candidate
+        candidates = []
         for p in site.search_entities(name, 'en', **kwargs):
-            if p['label'] == name:
+            # log.debug("looking for entity " + name + ", found " + str(p))
+            if p.get('label') == name:
                 if kwargs['type'] == 'property':
-                    found = p
+                    candidates.append(p)
                 else:
-                    found = pywikibot.ItemPage(site, p['id'], 0)
-                break
-        return found
+                    candidates.append(pywikibot.ItemPage(site, p['id'], 0))
+        if len(candidates) == 0:
+            return None
+        elif len(candidates) > 1 and kwargs['type'] == 'item':
+            found = []
+            for candidate in candidates:
+                item = candidate.get()
+                ok = True
+                for instance_of in item['claims'].get(self.P_instance_of, []):
+                    if (instance_of.getTarget() ==
+                            self.Q_Wikimedia_disambiguation_page):
+                        log.debug("ignore disambiguation page " +
+                                  candidate.getID() + " for " + name)
+                        ok = False
+                        break
+                if ok:
+                    found.append(candidate)
+            if len(found) != 1:
+                raise ValueError("found multiple items for " + name +
+                                 " " + str(found))
+            return found[0]
+        else:
+            return candidates[0]
 
     lookup_item = lookup_entity
 
