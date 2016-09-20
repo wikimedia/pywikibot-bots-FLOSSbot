@@ -14,6 +14,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+import random
+import string
+
 import pywikibot
 from pywikibot.data import api
 
@@ -25,3 +28,8 @@ class TestWikidata(object):
         api.LoginManager(site=site,
                          user="FLOSSbotCI",
                          password="yosQuepacAm2").login()
+
+    @staticmethod
+    def random_name():
+        return ''.join(random.choice(string.ascii_lowercase)
+                       for _ in range(16))

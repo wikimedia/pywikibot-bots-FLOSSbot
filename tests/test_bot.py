@@ -17,8 +17,6 @@
 #
 import argparse
 import logging
-import random
-import string
 from datetime import date
 
 import pywikibot
@@ -96,9 +94,7 @@ class TestBot(object):
             dry_run=False,
             verification_delay=30,
         ))
-        name = ''.join(random.choice(
-            string.ascii_lowercase) for _ in range(16))
-        item = bot.__getattribute__('Q_' + name)
+        item = bot.__getattribute__('Q_' + TestWikidata.random_name())
         claim = pywikibot.Claim(bot.site,
                                 bot.P_source_code_repository,
                                 0)
