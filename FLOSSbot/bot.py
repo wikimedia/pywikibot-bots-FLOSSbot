@@ -202,8 +202,8 @@ class Bot(object):
 
     def need_verification(self, claim):
         now = datetime.utcnow()
-        if self.P_retrieved in claim.qualifiers:
-            previous = claim.qualifiers[self.P_retrieved][0]
+        if self.P_point_in_time in claim.qualifiers:
+            previous = claim.qualifiers[self.P_point_in_time][0]
             previous = previous.getTarget()
             previous = datetime(year=previous.year,
                                 month=previous.month,
@@ -213,19 +213,19 @@ class Bot(object):
         else:
             return True
 
-    def set_retrieved(self, item, claim, now=datetime.utcnow()):
+    def set_point_in_time(self, item, claim, now=datetime.utcnow()):
         when = pywikibot.WbTime(now.year, now.month, now.day)
-        if self.P_retrieved in claim.qualifiers:
-            self.debug(item, "updating retrieved")
-            retrieved = claim.qualifiers[self.P_retrieved][0]
-            retrieved.setTarget(when)
+        if self.P_point_in_time in claim.qualifiers:
+            self.debug(item, "updating point-in-time")
+            point_in_time = claim.qualifiers[self.P_point_in_time][0]
+            point_in_time.setTarget(when)
             if not self.args.dry_run:
                 self.site.save_claim(claim)
         else:
-            self.debug(item, "setting retrieved")
-            retrieved = pywikibot.Claim(self.site,
-                                        self.P_retrieved,
-                                        isQualifier=True)
-            retrieved.setTarget(when)
+            self.debug(item, "setting point-in-time")
+            point_in_time = pywikibot.Claim(self.site,
+                                            self.P_point_in_time,
+                                            isQualifier=True)
+            point_in_time.setTarget(when)
             if not self.args.dry_run:
-                claim.addQualifier(retrieved, bot=True)
+                claim.addQualifier(point_in_time, bot=True)

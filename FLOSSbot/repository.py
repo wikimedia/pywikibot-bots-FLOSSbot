@@ -226,7 +226,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             if self.verify_protocol(url, protocol, credentials):
                 self.info(item, "VERIFIED " + url)
                 status[url] = 'verified'
-                self.set_retrieved(item, claim)
+                self.set_point_in_time(item, claim)
             else:
                 self.error(item, "VERIFY FAIL " + url)
                 status[url] = 'fail'
@@ -311,7 +311,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
-                self.set_retrieved(item, claim)
+                self.set_point_in_time(item, claim)
             self.info(item, "SET protocol of " + claim.getTarget())
 
     def guess_protocol_from_url(self, url):

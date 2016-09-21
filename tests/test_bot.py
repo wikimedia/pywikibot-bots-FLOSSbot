@@ -88,7 +88,7 @@ class TestBot(object):
             assert (datatype ==
                     wikidata_content[wikidata_property]['datatype']), attr
 
-    def test_set_retrieved(self):
+    def test_set_point_in_time(self):
         bot = Bot(argparse.Namespace(
             test=True,
             user='FLOSSbotCI',
@@ -101,9 +101,9 @@ class TestBot(object):
                                 0)
         claim.setTarget("http://repo.com/some")
         item.addClaim(claim)
-        bot.set_retrieved(item, claim)
+        bot.set_point_in_time(item, claim)
         assert bot.need_verification(claim) is False
-        bot.set_retrieved(item, claim, date(1965, 11, 2))
+        bot.set_point_in_time(item, claim, date(1965, 11, 2))
         assert bot.need_verification(claim) is True
         bot.clear_entity_label(item.getID())
 
