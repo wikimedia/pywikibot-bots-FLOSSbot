@@ -16,21 +16,19 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 import argparse
-import logging
 from datetime import date
 
 import pytest
 import pywikibot
 
 from FLOSSbot.bot import Bot
-from tests.wikidata import TestWikidata
+from tests.wikidata import WikidataHelper
 
 
 class TestBot(object):
 
     def setup_class(cls):
-        logging.getLogger('FLOSSbot').setLevel(logging.DEBUG)
-        TestWikidata().login()
+        WikidataHelper().login()
 
     def test_lookup_item(self):
         bot = Bot(argparse.Namespace(
@@ -95,7 +93,7 @@ class TestBot(object):
             dry_run=False,
             verification_delay=30,
         ))
-        item = bot.__getattribute__('Q_' + TestWikidata.random_name())
+        item = bot.__getattribute__('Q_' + WikidataHelper.random_name())
         claim = pywikibot.Claim(bot.site,
                                 bot.P_source_code_repository,
                                 0)
@@ -112,7 +110,7 @@ class TestBot(object):
             test=True,
             user='FLOSSbotCI',
         ))
-        name = TestWikidata.random_name()
+        name = WikidataHelper.random_name()
         entity = {
             "labels": {
                 "en": {

@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+import logging
 import random
 import string
 
@@ -21,7 +22,11 @@ import pywikibot
 from pywikibot.data import api
 
 
-class TestWikidata(object):
+class WikidataHelper(object):
+
+    def __init__(self):
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
+        logging.getLogger('FLOSSbot').setLevel(logging.DEBUG)
 
     def login(self):
         site = pywikibot.Site("test", "wikidata", "FLOSSbotCI")

@@ -20,13 +20,13 @@ import argparse
 import pywikibot
 
 from FLOSSbot.repository import Repository
-from tests.wikidata import TestWikidata
+from tests.wikidata import WikidataHelper
 
 
 class TestRepository(object):
 
     def setup_class(self):
-        TestWikidata().login()
+        WikidataHelper().login()
 
     def setup(self):
         self.r = Repository.factory([
@@ -99,7 +99,7 @@ class TestRepository(object):
             dry_run=False,
             verification_delay=30,
         ))
-        item = r.__getattribute__('Q_' + TestWikidata.random_name())
+        item = r.__getattribute__('Q_' + WikidataHelper.random_name())
         claim = pywikibot.Claim(r.site,
                                 r.P_source_code_repository,
                                 0)

@@ -117,7 +117,7 @@ class Bot(object):
                 return candidate
         candidates = []
         for p in site.search_entities(name, 'en', **kwargs):
-            # log.debug("looking for entity " + name + ", found " + str(p))
+            log.debug("looking for entity " + name + ", found " + str(p))
             if p.get('label') == name:
                 if kwargs['type'] == 'property':
                     candidates.append(p)
