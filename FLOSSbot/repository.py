@@ -213,6 +213,9 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
         status = {}
         for claim in clm_dict[self.P_source_code_repository]:
             url = claim.getTarget()
+            if claim.getRank() == 'deprecated':
+                self.debug(item, url + ' is deprecated, ignore')
+                continue
             if not self.need_verification(claim):
                 status[url] = 'no need'
                 continue

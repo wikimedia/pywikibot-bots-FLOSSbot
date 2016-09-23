@@ -115,6 +115,9 @@ class QA(bot.Bot):
         clm_dict = item_dict["claims"]
         status = []
         for qa in clm_dict.get(self.P_software_quality_assurance, []):
+            if qa.getRank() == 'deprecated':
+                self.debug(item, 'deprecated, ignore')
+                continue
             if not self.need_verification(qa):
                 status.append('no need')
                 continue
