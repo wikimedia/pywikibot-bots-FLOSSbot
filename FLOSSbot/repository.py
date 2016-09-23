@@ -380,13 +380,18 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
 
     def verify_bzr(self, url):
         #
-        # prefer branches over version-info because
-        # it fails on https://golem.ph.utexas.edu/~distler/code/instiki/svn/
-        # with bzr: ERROR: https://golem.ph... is not a local path.
+        # try branches and version-info because:
+        # * version-info fails on
+        #   https://golem.ph.utexas.edu/~distler/code/instiki/svn/
+        #   with bzr: ERROR: https://golem.ph... is not a local path.
+        # * branches fails on https://launchpad.net/inkscape with
+        #   ERROR: Transport operation not possible: ..
+        #   has not implemented list_dir
         #
         return util.sh_bool("""
         set -e
-        timeout 30 bzr branches {url}
+        timeout 30 bzr branches {url} ||
+        timeout 30 bzr version-info {url}
         """.format(url=url))
 
     def verify_ftp(self, url):
