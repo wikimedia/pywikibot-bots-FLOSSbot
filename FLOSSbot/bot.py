@@ -22,7 +22,7 @@ import time
 import pywikibot
 from pywikibot import pagegenerators as pg
 
-from FLOSSbot import qa, repository, util
+from FLOSSbot import qa, repository
 from FLOSSbot.plugin import Plugin
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
@@ -111,7 +111,7 @@ class Bot(object):
         for plugin in plugins:
             parents.append(plugin.get_parser())
         parser = argparse.ArgumentParser(
-            formatter_class=util.CustomFormatter,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
             description=textwrap.dedent("""\
             A command-line toolbox for the wikidata FLOSS project.
             """),
