@@ -17,77 +17,35 @@
 import argparse
 import logging
 import os
-import textwrap
 from urllib.parse import urlparse
 
 import pywikibot
 import requests
-from pywikibot import pagegenerators as pg
 
-from FLOSSbot import bot, util
+from FLOSSbot import plugin
 
 log = logging.getLogger(__name__)
 
 
-class QA(bot.Bot):
+class QA(plugin.Plugin):
 
     @staticmethod
     def get_parser():
         parser = argparse.ArgumentParser(add_help=False)
-        select = parser.add_mutually_exclusive_group()
-        select.add_argument(
-            '--filter',
-            default='',
-            choices=['verify'],
-            help='filter with a pre-defined query',
-        )
-        select.add_argument(
-            '--item',
-            default=[],
-            action='append',
-            help='work on this QID (can be repeated)')
         return parser
 
     @staticmethod
-    def set_subparser(subparsers):
-        subparsers.add_parser(
-            'qa',
-            formatter_class=util.CustomFormatter,
-            description=textwrap.dedent("""\
-            Set the software quality assurance statement
-            """),
-            help='Set the software quality assurance statement',
-            parents=[QA.get_parser()],
-            add_help=False,
-            conflict_handler='resolve',
-        ).set_defaults(
-            func=QA,
-        )
+    def filter_names():
+        return ['qa-verify']
 
-    @staticmethod
-    def factory(argv):
-        return bot.Bot.factory(QA, argv)
-
-    def run(self):
-        if len(self.args.item) > 0:
-            self.run_items()
-        else:
-            self.run_query()
-
-    def run_items(self):
-        for item in self.args.item:
-            item = pywikibot.ItemPage(self.site, item, 0)
-            self.fixup(item)
-            self.verify(item)
-
-    def run_query(self):
+    def get_query(self, filter):
         format_args = {
             'repository': self.P_source_code_repository,
             'qa': self.P_software_quality_assurance,
             'point_in_time': self.P_point_in_time,
             'delay': self.args.verification_delay,
         }
-        if self.args.filter == 'verify':
+        if filter == 'qa-verify':
             query = """
             SELECT DISTINCT ?item WHERE {{
               ?item p:{qa} ?qa .
@@ -97,18 +55,12 @@ class QA(bot.Bot):
             }} ORDER BY ?item
             """.format(**format_args)
         else:
-            query = """
-            SELECT DISTINCT ?item WHERE {{
-              ?item p:{repository} ?repository.
-              FILTER NOT EXISTS {{ ?item p:{qa} ?qa }}
-            }} ORDER BY ?item
-            """.format(**format_args)
-        log.debug(query)
-        for item in pg.WikidataSPARQLPageGenerator(query,
-                                                   site=self.site,
-                                                   result_type=list):
-            self.fixup(item)
-            self.verify(item)
+            query = None
+        return query
+
+    def run(self, item):
+        self.fixup(item)
+        self.verify(item)
 
     def verify(self, item):
         item_dict = item.get()
@@ -136,7 +88,7 @@ class QA(bot.Bot):
                 continue
             ok = True
             for (qualifier, target) in found.items():
-                name = pywikibot.PropertyPage(self.site, qualifier)
+                name = pywikibot.PropertyPage(self.bot.site, qualifier)
                 name.get()
                 name = name.labels['en']
                 if qualifier not in qa.qualifiers:
@@ -217,12 +169,12 @@ class QA(bot.Bot):
             return
 
         software_quality_assurance = pywikibot.Claim(
-            self.site, self.P_software_quality_assurance, 0)
+            self.bot.site, self.P_software_quality_assurance, 0)
         software_quality_assurance.setTarget(self.Q_Continuous_integration)
         item.addClaim(software_quality_assurance)
 
         for (qualifier, target) in found.items():
-            claim = pywikibot.Claim(self.site, qualifier, 0)
+            claim = pywikibot.Claim(self.bot.site, qualifier, 0)
             claim.setTarget(target)
             software_quality_assurance.addQualifier(claim, bot=True)
 

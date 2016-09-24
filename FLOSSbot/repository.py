@@ -17,158 +17,31 @@
 import argparse
 import logging
 import re
-import textwrap
-import time
 
 import pywikibot
 import requests
-from pywikibot import pagegenerators as pg
 
-from FLOSSbot import bot, util
+from FLOSSbot import plugin, util
 
 log = logging.getLogger(__name__)
 
-FLOSS_doc = ("https://www.wikidata.org/wiki/Wikidata:"
-             "WikiProject_Informatics/FLOSS#source_code_repository")
 
-
-class Repository(bot.Bot):
-
-    cache = None
+class Repository(plugin.Plugin):
 
     @staticmethod
     def get_parser():
         parser = argparse.ArgumentParser(add_help=False)
-        select = parser.add_mutually_exclusive_group()
-        select.add_argument(
-            '--filter',
-            default='',
-            choices=['no-protocol', 'no-preferred'],
-            help='filter with a pre-defined query',
-        )
-        select.add_argument(
-            '--item',
-            default=[],
-            action='append',
-            help='work on this QID (can be repeated)')
         return parser
 
     @staticmethod
-    def set_subparser(subparsers):
-        subparsers.add_parser(
-            'repository',
-            formatter_class=util.CustomFormatter,
-            description=textwrap.dedent("""\
-            Verify and fix the source code repository claim.
+    def filter_names():
+        return [
+            'repository-no-protocol',
+            'repository-no-preferred',
+        ]
 
-            The scope of the verifications and the associated
-            modifications is explained below. By default all
-            items that have at least one source code repository
-            claim are considered. It can be restricted with
-            the --filter or --item options.
-
-            A) Protocol
-
-            The source code repository responds to a protocol that
-            depends on the VCS. If the protocol qualifier is missing,
-            try a range of VCS to figure out which protocol it
-            implements and set the protocol qualifier accordingly.
-
-            For web sites that host many respositories (such as github
-            or sourceforge), additional heuristics are implemented to
-            figure out the URL of the repository or the protocol. For
-            instance, since github only hosts git repositories, the
-            protocol is always assumed to be git. For sourceforce,
-            the URL of the web interface to the repository is fetched
-            to get the instructions and figure out if it is subversion,
-            mercurial or git.
-
-            When everything fails and the protocol cannot be established
-            with absolute certainty, an error is displayed and an editor
-            should fix the item.
-
-            --filter no-protocol
-                  select only the items for which there exists
-                  at least one claim with no protocol qualifier
-
-            B) Preferred rank
-
-            When there are multiple source code repository URLs
-            one of them must have the preferred rank. The aim
-            is to display it in an infobox therefore the URL
-            with the http protocol should be preferred over another
-            requiring a VCS software.
-
-            --filter no-preferred
-                  select only the items for which there exists
-                  at more than one claim with no preferred rank
-
-            [1] {doc}
-            """.format(doc=FLOSS_doc)),
-            epilog=textwrap.dedent("""
-            Examples:
-
-            $ FLOSSbot --verbose repository
-
-            INFO WORKING ON https://www.wikidata.org/wiki/Q403539
-            INFO IGNORE \
-https://code.wireshark.org/review/gitweb?p=wireshark.git \
-because it already has a protocol
-            DEBUG trying all known protocols on \
-https://code.wireshark.org/review/p/wireshark.git
-            DEBUG :sh: timeout 30 git ls-remote \
-https://code.wireshark.org/review/p/wireshark.git HEAD
-            DEBUG b'e8f1d2abda939f37d99f272f8a76a191c9a752b4\tHEAD'
-
-            INFO WORKING ON https://www.wikidata.org/wiki/Q4035967
-            DEBUG trying all known protocols on \
-http://git.ceph.com/?p=ceph.git;a=summary
-            DEBUG :sh: timeout 30 git ls-remote \
-http://git.ceph.com/?p=ceph.git;a=summary HEAD
-            DEBUG b"fatal: repository \
-'http://git.ceph.com/?p=ceph.git/' not found"
-            DEBUG b'/bin/sh: 1: HEAD: not found'
-            ...
-            ERROR SKIP http://git.ceph.com/?p=ceph.git;a=summary
-
-            The first item (https://www.wikidata.org/wiki/Q403539) has
-            two source code repository. The first one already has a
-            protocol qualifier and is left untouched. An attempt is
-            made to retrieve it with the git command line and
-            succeeds. The protocol qualifier is set to git.
-
-            The second item (WORKING ON https://www.wikidata.org/wiki/Q4035967)
-            has a source code repository URL which is a gitweb interface to a
-            git repository. It is not useable wiht any protocol, including git,
-            and the program fails with an error so the editor can manually
-            edit the item.
-            """),
-            help='Set protocol of the source code repository',
-            parents=[Repository.get_parser()],
-            add_help=False,
-            conflict_handler='resolve',
-        ).set_defaults(
-            func=Repository,
-        )
-
-    @staticmethod
-    def factory(argv):
-        return bot.Bot.factory(Repository, argv)
-
-    def run(self):
-        if len(self.args.item) > 0:
-            self.run_items()
-        else:
-            self.run_query()
-
-    def run_items(self):
-        for item in self.args.item:
-            item = pywikibot.ItemPage(self.site, item, 0)
-            self.fixup(item)
-            self.verify(item)
-
-    def run_query(self):
-        if self.args.filter == 'no-protocol':
+    def get_query(self, filter):
+        if filter == 'repository-no-protocol':
             query = """
             SELECT DISTINCT ?item WHERE {{
               ?item p:{source_code_repository} ?repo.
@@ -178,7 +51,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             }} ORDER BY ?item
             """.format(source_code_repository=self.P_source_code_repository,
                        protocol=self.P_protocol)
-        elif self.args.filter == 'no-preferred':
+        elif filter == 'repository-no-preferred':
             query = """
             SELECT ?item (COUNT(?value) AS ?count) WHERE
             {{
@@ -193,18 +66,12 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
             ORDER BY ?item
             """.format(source_code_repository=self.P_source_code_repository)
         else:
-            query = """
-            SELECT DISTINCT ?item WHERE {{
-              ?item wdt:{source_code_repository} ?url.
-            }} ORDER BY ?item
-            """.format(source_code_repository=self.P_source_code_repository)
-        query = query + " # " + str(time.time())
-        log.debug(query)
-        for item in pg.WikidataSPARQLPageGenerator(query,
-                                                   site=self.site,
-                                                   result_type=list):
-            self.fixup(item)
-            self.verify(item)
+            query = None
+        return query
+
+    def run(self, item):
+        self.fixup(item)
+        self.verify(item)
 
     def verify(self, item):
         item_dict = item.get()
@@ -285,7 +152,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 self.debug(item, "ADDING " + extracted +
                            " as a source repository discovered in " + url)
                 source_code_repository = pywikibot.Claim(
-                    self.site,
+                    self.bot.site,
                     self.P_source_code_repository,
                     0)
                 source_code_repository.setTarget(extracted)
@@ -310,7 +177,7 @@ http://git.ceph.com/?p=ceph.git;a=summary HEAD
                 self.error(item,
                            claim.getTarget() + " misses a protocol qualifier")
                 continue
-            protocol = pywikibot.Claim(self.site, self.P_protocol, 0)
+            protocol = pywikibot.Claim(self.bot.site, self.P_protocol, 0)
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)

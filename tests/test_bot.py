@@ -15,11 +15,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import argparse
-from datetime import date
+import logging
 
-import pytest
-import pywikibot
+import mock
+import pytest  # noqa # caplog
 
 from FLOSSbot.bot import Bot
 from tests.wikidata import WikidataHelper
@@ -30,117 +29,76 @@ class TestBot(object):
     def setup_class(cls):
         WikidataHelper().login()
 
-    def test_lookup_item(self):
-        bot = Bot(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-        ))
-        assert 0 == len(bot.entities['item'])
-        git = bot.Q_git
-        assert 1 == len(bot.entities['item'])
-        assert git == bot.Q_git
-        assert bot.Q_Concurrent_Versions_System
-        assert 2 == len(bot.entities['item'])
+    def test_factory(self):
+        Bot.factory(['--verbose'])
+        assert (logging.getLogger('FLOSSbot').getEffectiveLevel() ==
+                logging.DEBUG)
 
-    def test_create_entity(self):
-        bot = Bot(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-        ))
-        item = bot.Q_git
-        assert 1 == len(bot.entities['item'])
-        bot.clear_entity_label(item.getID())
-        assert 0 == len(bot.entities['item'])
-        item = bot.Q_git
-        assert 1 == len(bot.entities['item'])
+        b = Bot.factory([])
+        assert (logging.getLogger('FLOSSbot').getEffectiveLevel() ==
+                logging.INFO)
 
-        property2datatype = {
-            'P_source_code_repository': 'url',
-            'P_website_username': 'string',
-            'P_protocol': 'wikibase-item',
-        }
+        assert len(b.plugins) > 0
 
-        wikidata_bot = Bot(argparse.Namespace(
-            test=False,
-            user=None,
-        ))
-        for (attr, datatype) in property2datatype.items():
-            bot.reset_cache()
-            property = bot.__getattribute__(attr)
-            assert 1 == len(bot.entities['property'])
-            bot.clear_entity_label(property)
-            assert 0 == len(bot.entities['property'])
-            for i in range(120):
-                if (bot.lookup_entity(
-                        attr, type='property') is None):
-                    break
-            property = bot.__getattribute__(attr)
-            assert 1 == len(bot.entities['property'])
+        plugin = 'QA'
+        b = Bot.factory(['--verbose', '--plugin=' + plugin])
+        assert 1 == len(b.plugins)
+        assert plugin == b.plugins[0].__class__.__name__
 
-            new_content = bot.site.loadcontent({'ids': property}, 'datatype')
-            wikidata_property = wikidata_bot.__getattribute__(attr)
-            wikidata_content = wikidata_bot.site.loadcontent(
-                {'ids': wikidata_property}, 'datatype')
-            assert (wikidata_content[wikidata_property]['datatype'] ==
-                    new_content[property]['datatype']), attr
-            assert (datatype ==
-                    wikidata_content[wikidata_property]['datatype']), attr
+        b = Bot.factory([
+            '--verbose',
+            '--plugin=QA',
+            '--plugin=Repository',
+        ])
+        assert 2 == len(b.plugins)
 
-    def test_set_point_in_time(self):
-        bot = Bot(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-            dry_run=False,
-            verification_delay=30,
-        ))
-        item = bot.__getattribute__('Q_' + WikidataHelper.random_name())
-        claim = pywikibot.Claim(bot.site,
-                                bot.P_source_code_repository,
-                                0)
-        claim.setTarget("http://repo.com/some")
-        item.addClaim(claim)
-        bot.set_point_in_time(item, claim)
-        assert bot.need_verification(claim) is False
-        bot.set_point_in_time(item, claim, date(1965, 11, 2))
-        assert bot.need_verification(claim) is True
-        bot.clear_entity_label(item.getID())
+    @mock.patch.object(Bot, 'run_items')
+    @mock.patch.object(Bot, 'run_query')
+    def test_run(self, m_query, m_items):
+        b = Bot.factory([])
+        b.run()
+        m_query.assert_called_with()
+        m_items.assert_not_called()
 
-    def test_search_entity(self):
-        bot = Bot(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-        ))
-        name = WikidataHelper.random_name()
-        entity = {
-            "labels": {
-                "en": {
-                    "language": "en",
-                    "value": name,
-                }
-            },
-        }
-        first = bot.site.editEntity({'new': 'item'}, entity)
-        first = pywikibot.ItemPage(bot.site, first['entity']['id'], 0)
-        second = bot.site.editEntity({'new': 'item'}, entity)
-        second = pywikibot.ItemPage(bot.site, second['entity']['id'], 0)
+        m_query.reset_mock()
+        m_items.reset_mock()
+        b = Bot.factory(['--verbose', '--item=Q1'])
+        b.run()
+        m_items.assert_called_with()
+        m_query.assert_not_called()
 
-        with pytest.raises(ValueError) as e:
-            bot.search_entity(bot.site, name, type='item')
-        assert "found multiple items" in str(e.value)
+    @mock.patch('FLOSSbot.qa.QA.run')
+    def test_run_items(self, m_run):
+        b = Bot.factory([
+            '--verbose',
+            '--item=Q1',
+            '--plugin=QA',
+        ])
+        b.run()
+        m_run.assert_called_with(mock.ANY)
 
-        claim = pywikibot.Claim(bot.site, bot.P_instance_of, 0)
-        claim.setTarget(bot.Q_Wikimedia_disambiguation_page)
-        first.addClaim(claim)
+    @mock.patch('FLOSSbot.qa.QA.run')
+    @mock.patch('pywikibot.pagegenerators.WikidataSPARQLPageGenerator')
+    def test_run_query_default(self, m_query, m_run):
+        b = Bot.factory([
+            '--verbose',
+            '--plugin=QA',
+        ])
+        m_query.side_effect = 'one page'
+        b.run()
+        m_run.assert_called_with(mock.ANY)
 
-        found = bot.search_entity(bot.site, name, type='item')
-        assert found.getID() == second.getID()
+    @mock.patch('FLOSSbot.qa.QA.run')
+    @mock.patch('pywikibot.pagegenerators.WikidataSPARQLPageGenerator')
+    def test_run_query_items(self, m_query, m_run, caplog):
+        b = Bot.factory([
+            '--verbose',
+            '--filter=qa-verify',
+            '--plugin=QA',
+        ])
+        m_query.side_effect = 'one page'
+        b.run()
 
-        bot.site.editEntity({'new': 'item'}, entity)
-
-        with pytest.raises(ValueError) as e:
-            bot.search_entity(bot.site, name, type='item')
-        assert "found multiple items" in str(e.value)
-
-        Bot.authoritative['test'][name] = second.getID()
-        found = bot.search_entity(bot.site, name, type='item')
-        assert found.getID() == second.getID()
+        for record in caplog.records():
+            if 'running query' in record.message:
+                assert '?qa' in record.message

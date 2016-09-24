@@ -16,17 +16,31 @@
 #
 import argparse
 import logging
-from datetime import datetime, timedelta
+import textwrap
+import time
 
 import pywikibot
+from pywikibot import pagegenerators as pg
 
+from FLOSSbot import qa, repository, util
+from FLOSSbot.plugin import Plugin
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
+
+plugins = [
+    repository.Repository,
+    qa.QA,
+]
+
+name2plugin = dict([(p.__name__, p) for p in plugins])
 
 
 class Bot(object):
 
     def __init__(self, args):
         self.args = args
+        logging.getLogger('FLOSSbot').setLevel(self.args.verbose)
         self.site = pywikibot.Site(
             code="wikidata" if not self.args.test else "test",
             fam="wikidata",
@@ -36,11 +50,30 @@ class Bot(object):
         if self.args.test:
             self.wikidata_site = pywikibot.Site(code="wikidata",
                                                 fam="wikidata")
-        self.reset_cache()
+        else:
+            self.wikidata_site = None
+        self.plugins = []
+        for name in self.args.plugin or name2plugin.keys():
+            plugin = name2plugin[name]
+            self.plugins.append(plugin(self, args))
 
     @staticmethod
     def get_parser():
+        filters = []
+        available_plugins = []
+        for plugin in plugins:
+            filters.extend(plugin.filter_names())
+            available_plugins.append(plugin.__name__)
         parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument(
+            '-v', '--verbose',
+            action='store_const',
+            const=logging.DEBUG,
+            default=logging.INFO)
+        parser.add_argument(
+            '--dry-run',
+            action='store_true', default=None,
+            help='no side effect')
         parser.add_argument(
             '--test',
             action='store_true', default=None,
@@ -50,182 +83,64 @@ class Bot(object):
             default=None,
             help='wikidata user name')
         parser.add_argument(
-            '--verification-delay',
-            type=int,
-            default=30,
-            help='days to wait before verifying a claim again')
+            '--plugin',
+            default=[],
+            choices=available_plugins,
+            action='append',
+            help='use this plugin instead of all of them (can be repeated)')
+        select = parser.add_mutually_exclusive_group()
+        select.add_argument(
+            '--filter',
+            default='',
+            choices=filters,
+            help='filter with a pre-defined query',
+        )
+        select.add_argument(
+            '--item',
+            default=[],
+            action='append',
+            help='work on this QID (can be repeated)')
         return parser
 
     @staticmethod
-    def factory(cls, argv):
+    def factory(argv):
+        parents = [
+            Bot.get_parser(),
+            Plugin.get_parser(),
+        ]
+        for plugin in plugins:
+            parents.append(plugin.get_parser())
         parser = argparse.ArgumentParser(
-            parents=[Bot.get_parser()],
-            add_help=False,
-            conflict_handler='resolve')
-        cls.set_subparser(parser.add_subparsers())
-        return cls(parser.parse_args(argv))
+            formatter_class=util.CustomFormatter,
+            description=textwrap.dedent("""\
+            A command-line toolbox for the wikidata FLOSS project.
+            """),
+            parents=parents)
+        return Bot(parser.parse_args(argv))
 
-    def debug(self, item, message):
-        self.log(log.debug, item, message)
-
-    def info(self, item, message):
-        self.log(log.info, item, message)
-
-    def error(self, item, message):
-        self.log(log.error, item, message)
-
-    def log(self, fun, item, message):
-        fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
-
-    def reset_cache(self):
-        self.entities = {
-            'property': {},
-            'item': {},
-        }
-
-    def lookup_entity(self, name, **kwargs):
-        type = kwargs['type']
-        found = self.entities[type].get(name)
-        if found:
-            return found
-        found = self.search_entity(self.site, name, **kwargs)
-        if found:
-            if type == 'property':
-                found = found['id']
-            self.entities[type][name] = found
-        return found
-
-    #
-    # Hardcode the desired wikidata item when there are
-    # multiple items with the same english label and no
-    # trivial way to disambiguate them.
-    #
-    authoritative = {
-        'wikidata': {
-            'git': 'Q186055',
-            'Fossil': 'Q1439431',
-        },
-        'test': {
-        },
-    }
-
-    def search_entity(self, site, name, **kwargs):
-        if name in Bot.authoritative[site.code]:
-            candidate = pywikibot.ItemPage(
-                site, Bot.authoritative[site.code][name], 0)
-            if candidate.get()['labels']['en'] == name:
-                return candidate
-        candidates = []
-        for p in site.search_entities(name, 'en', **kwargs):
-            log.debug("looking for entity " + name + ", found " + str(p))
-            if p.get('label') == name:
-                if kwargs['type'] == 'property':
-                    candidates.append(p)
-                else:
-                    candidates.append(pywikibot.ItemPage(site, p['id'], 0))
-        if len(candidates) == 0:
-            return None
-        elif len(candidates) > 1 and kwargs['type'] == 'item':
-            found = []
-            for candidate in candidates:
-                item = candidate.get()
-                ok = True
-                for instance_of in item['claims'].get(self.P_instance_of, []):
-                    if (instance_of.getTarget() ==
-                            self.Q_Wikimedia_disambiguation_page):
-                        log.debug("ignore disambiguation page " +
-                                  candidate.getID() + " for " + name)
-                        ok = False
-                        break
-                if ok:
-                    found.append(candidate)
-            if len(found) != 1:
-                raise ValueError("found multiple items for " + name +
-                                 " " + str(found))
-            return found[0]
+    def run(self):
+        if len(self.args.item) > 0:
+            self.run_items()
         else:
-            return candidates[0]
+            self.run_query()
 
-    lookup_item = lookup_entity
+    def run_items(self):
+        for item in self.args.item:
+            item = pywikibot.ItemPage(self.site, item, 0)
+            for plugin in self.plugins:
+                plugin.run(item)
 
-    def lookup_property(self, name):
-        return self.lookup_entity(self.site, name, type='property')
-
-    def create_entity(self, type, name):
-        found = self.search_entity(self.wikidata_site, name, type=type)
-        entity = {
-            "labels": {
-                "en": {
-                    "language": "en",
-                    "value": name,
-                }
-            },
-        }
-        if type == 'property':
-            assert found, type + " " + name + " must exist in wikidata"
-            id = found['id']
-            found = self.wikidata_site.loadcontent({'ids': id}, 'datatype')
-            assert found, "datatype of " + id + " " + name + " is not found"
-            entity['datatype'] = found[id]['datatype']
-        log.debug("create " + type + " " + str(entity))
-        self.site.editEntity({'new': type}, entity)
-
-    def clear_entity_label(self, id):
-        data = {
-            "labels": {
-                "en": {
-                    "language": "en",
-                    "value": "",
-                }
-            }
-        }
-        log.debug("clear " + id + " label")
-        self.site.editEntity({'id': id}, data)
-        self.reset_cache()
-
-    def __getattribute__(self, name):
-        if name.startswith('P_'):
-            type = 'property'
-        elif name.startswith('Q_'):
-            type = 'item'
-        else:
-            return super(Bot, self).__getattribute__(name)
-        label = " ".join(name.split('_')[1:])
-        found = self.lookup_entity(label, type=type)
-        if not found and self.args.test:
-            self.create_entity(type, label)
-            for i in range(120):
-                found = self.lookup_entity(label, type=type)
-                if found is not None:
-                    break
-        return found
-
-    def need_verification(self, claim):
-        now = datetime.utcnow()
-        if self.P_point_in_time in claim.qualifiers:
-            previous = claim.qualifiers[self.P_point_in_time][0]
-            previous = previous.getTarget()
-            previous = datetime(year=previous.year,
-                                month=previous.month,
-                                day=previous.day)
-            return (now - previous >=
-                    timedelta(days=self.args.verification_delay))
-        else:
-            return True
-
-    def set_point_in_time(self, item, claim, now=datetime.utcnow()):
-        when = pywikibot.WbTime(now.year, now.month, now.day)
-        if self.P_point_in_time in claim.qualifiers:
-            self.debug(item, "updating point-in-time")
-            point_in_time = claim.qualifiers[self.P_point_in_time][0]
-            point_in_time.setTarget(when)
-            if not self.args.dry_run:
-                self.site.save_claim(claim)
-        else:
-            self.debug(item, "setting point-in-time")
-            point_in_time = pywikibot.Claim(self.site,
-                                            self.P_point_in_time,
-                                            isQualifier=True)
-            point_in_time.setTarget(when)
-            if not self.args.dry_run:
-                claim.addQualifier(point_in_time, bot=True)
+    def run_query(self):
+        for plugin in self.plugins:
+            query = plugin.get_query(self.args.filter)
+            if query is not None:
+                break
+        if query is None:
+            query = Plugin(self, self.args).get_query(self.args.filter)
+        query = query + " # " + str(time.time())
+        log.debug('running query ' + query)
+        for item in pg.WikidataSPARQLPageGenerator(query,
+                                                   site=self.site,
+                                                   result_type=list):
+            for plugin in self.plugins:
+                plugin.run(item)

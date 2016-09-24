@@ -14,52 +14,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import argparse
-import logging
-import textwrap
-
-from FLOSSbot import bot, qa, repository, util
-
-logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
+from FLOSSbot import bot
 
 
 class FLOSSbot(object):
 
-    def __init__(self):
-        self.parser = argparse.ArgumentParser(
-            formatter_class=util.CustomFormatter,
-            description=textwrap.dedent("""\
-            A command-line toolbox for the wikidata FLOSS project.
-
-            The documentation for each subcommand can be displayed with
-
-               FLOSSbot subcommand --help
-            """),
-            parents=[bot.Bot.get_parser()])
-
-        self.parser.add_argument(
-            '-v', '--verbose',
-            action='store_const',
-            const=logging.DEBUG,
-            default=logging.INFO)
-
-        self.parser.add_argument(
-            '--dry-run',
-            action='store_true', default=None,
-            help='no side effect')
-
-        subparsers = self.parser.add_subparsers(
-            title='subcommands',
-            description='valid subcommands',
-            help='sub-command -h',
-        )
-
-        qa.QA.set_subparser(subparsers)
-        repository.Repository.set_subparser(subparsers)
-
     def run(self, argv):
-        self.args = self.parser.parse_args(argv)
-
-        logging.getLogger('FLOSSbot').setLevel(self.args.verbose)
-
-        return self.args.func(self.args).run()
+        return bot.Bot.factory(argv).run()

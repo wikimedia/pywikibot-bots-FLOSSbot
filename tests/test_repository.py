@@ -15,10 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import argparse
-
 import pywikibot
 
+from FLOSSbot.bot import Bot
 from FLOSSbot.repository import Repository
 from tests.wikidata import WikidataHelper
 
@@ -29,10 +28,12 @@ class TestRepository(object):
         WikidataHelper().login()
 
     def setup(self):
-        self.r = Repository.factory([
-            '--user=FLOSSbotCI',
+        bot = Bot.factory([
+            '--verbose',
             '--test',
+            '--user=FLOSSbotCI',
         ])
+        self.r = Repository(bot, bot.args)
 
     def test_guessproto__github_is_git(self):
         assert(
@@ -93,36 +94,30 @@ class TestRepository(object):
             is None)
 
     def test_verify(self):
-        r = Repository(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-            dry_run=False,
-            verification_delay=30,
-        ))
-        item = r.__getattribute__('Q_' + WikidataHelper.random_name())
-        claim = pywikibot.Claim(r.site,
-                                r.P_source_code_repository,
+        item = self.r.__getattribute__('Q_' + WikidataHelper.random_name())
+        claim = pywikibot.Claim(self.r.bot.site,
+                                self.r.P_source_code_repository,
                                 0)
         url = "http://github.com/ceph/ceph"
         claim.setTarget(url)
         item.addClaim(claim)
 
-        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
-        assert {url: 'no protocol'} == r.verify(to_verify)
+        to_verify = pywikibot.ItemPage(self.r.bot.site, item.getID(), 0)
+        assert {url: 'no protocol'} == self.r.verify(to_verify)
 
-        protocol = pywikibot.Claim(r.site, r.P_protocol, 0)
-        protocol.setTarget(r.Q_git)
+        protocol = pywikibot.Claim(self.r.bot.site, self.r.P_protocol, 0)
+        protocol.setTarget(self.r.Q_git)
         claim.addQualifier(protocol, bot=True)
 
-        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
-        assert {url: 'verified'} == r.verify(to_verify)
+        to_verify = pywikibot.ItemPage(self.r.bot.site, item.getID(), 0)
+        assert {url: 'verified'} == self.r.verify(to_verify)
 
-        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
-        assert {url: 'no need'} == r.verify(to_verify)
+        to_verify = pywikibot.ItemPage(self.r.bot.site, item.getID(), 0)
+        assert {url: 'no need'} == self.r.verify(to_verify)
 
         claim.changeTarget("http://example.org")
 
-        to_verify = pywikibot.ItemPage(r.site, item.getID(), 0)
-        assert {"http://example.org": 'fail'} == r.verify(to_verify)
+        to_verify = pywikibot.ItemPage(self.r.bot.site, item.getID(), 0)
+        assert {"http://example.org": 'fail'} == self.r.verify(to_verify)
 
-        r.clear_entity_label(item.getID())
+        self.r.clear_entity_label(item.getID())

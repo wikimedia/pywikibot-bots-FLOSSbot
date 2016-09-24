@@ -15,13 +15,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import argparse
 import logging
 
 import mock
 import pywikibot
 import requests
 
+from FLOSSbot.bot import Bot
 from FLOSSbot.qa import QA
 from tests.wikidata import WikidataHelper
 
@@ -46,30 +46,32 @@ class TestQA(object):
             return c(url2code.get(url, requests.codes.ok))
 
         m_get.side_effect = get
-        qa = QA(argparse.Namespace(
-            test=True,
-            user='FLOSSbotCI',
-            dry_run=False,
-            verification_delay=0,
-        ))
+        bot = Bot.factory([
+            '--verbose',
+            '--test',
+            '--user=FLOSSbotCI',
+            '--verification-delay=0',
+        ])
+        qa = QA(bot, bot.args)
         item = qa.__getattribute__('Q_' + WikidataHelper.random_name())
 
         log.debug(">> do nothing if there is no source code repository")
-        to_verify = pywikibot.ItemPage(qa.site, item.getID(), 0)
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
         assert [] == qa.verify(to_verify)
 
         log.debug(">> add a source code repository")
-        repository = pywikibot.Claim(qa.site, qa.P_source_code_repository, 0)
+        repository = pywikibot.Claim(
+            qa.bot.site, qa.P_source_code_repository, 0)
         url = "http://github.com/FAKE1/FAKE2"
         repository.setTarget(url)
         item.addClaim(repository)
 
         log.debug(">> add a qa statement")
-        to_verify = pywikibot.ItemPage(qa.site, item.getID(), 0)
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
         qa.fixup(to_verify)
 
         log.debug(">> no ci found")
-        to_verify = pywikibot.ItemPage(qa.site, item.getID(), 0)
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
         url2code['https://travis-ci.org/FAKE1/FAKE2'] = 404
         assert ['no ci found'] == qa.verify(to_verify)
 
@@ -84,7 +86,7 @@ class TestQA(object):
 
         log.debug(">> inconsistent qualifier")
         repository.changeTarget("http://github.com/other/other")
-        to_verify = pywikibot.ItemPage(qa.site, item.getID(), 0)
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
         assert (['inconsistent qualifier archive URL',
                  'inconsistent qualifier described at URL'] ==
                 qa.verify(to_verify))
@@ -93,7 +95,7 @@ class TestQA(object):
         qa_claim = to_verify.claims[qa.P_software_quality_assurance][0]
         archive_URL = qa_claim.qualifiers[qa.P_archive_URL][0]
         qa_claim.removeQualifier(archive_URL)
-        to_verify = pywikibot.ItemPage(qa.site, item.getID(), 0)
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
         assert ['inconsistent qualifier described at URL',
                 'missing qualifier archive URL'] == qa.verify(to_verify)
 
