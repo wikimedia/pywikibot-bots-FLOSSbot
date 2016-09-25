@@ -22,7 +22,7 @@ import time
 import pywikibot
 from pywikibot import pagegenerators as pg
 
-from FLOSSbot import qa, repository
+from FLOSSbot import fsd, qa, repository
 from FLOSSbot.plugin import Plugin
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 plugins = [
     repository.Repository,
     qa.QA,
+    fsd.FSD,
 ]
 
 name2plugin = dict([(p.__name__, p) for p in plugins])
