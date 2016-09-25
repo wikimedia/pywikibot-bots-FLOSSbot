@@ -20,6 +20,7 @@ import os
 
 import pywikibot
 from pywikibot import config2
+from slugify import slugify
 
 from FLOSSbot import plugin
 
@@ -64,7 +65,38 @@ class FSD(plugin.Plugin):
         self.fsd = pywikibot.Site(code="en", fam="fsd")
 
     def run(self, item):
+        self.fixup(item)
         self.verify(item)
+
+    def fixup(self, item):
+        item.get()
+        if self.P_Free_Software_Directory_entry in item.claims:
+            return 'already exists'
+        title = item.labels.get('en')
+        if title is None:
+            return 'no label'
+        fsd = self.get_fsd(title)
+        if not fsd:
+            self.debug(item,
+                       "no matching Free Software Directory entry for " +
+                       title)
+            return 'not found'
+        fsd_title = fsd['Entry'][0]['name'].lower().replace('gnu ', '')
+        wikidata_title = title.lower().replace('gnu ', '').replace('_', ' ')
+        if fsd_title != wikidata_title:
+            self.error(item, "Free Software Directory entry name " +
+                       fsd_title + " was expected to be "
+                       + wikidata_title)
+            return 'mismatched'
+        if not self.args.dry_run:
+            entry = pywikibot.Claim(
+                self.bot.site, self.P_Free_Software_Directory_entry, 0)
+            entry.setTarget(title.replace(' ', '_'))
+            item.addClaim(entry)
+            self.set_point_in_time(item, entry)
+        self.info(item, "FOUND Free Software Directory entry " +
+                  "http://directory.fsf.org/wiki/" + title)
+        return 'found'
 
     def verify(self, item):
         item.get()
@@ -87,6 +119,20 @@ class FSD(plugin.Plugin):
             self.error(item, "Free Software Directory not found")
             return 'failed'
 
-    def get_fsd(self, title):
+    def fetch_fsd(self, title):
         p = pywikibot.Page(pywikibot.Link(title, self.fsd))
         return p.templatesWithParams()
+
+    def get_fsd(self, title):
+        r = self.fetch_fsd(title)
+        log.debug("Free Software Directory " + title + ": " + str(r))
+        entry = {}
+        for (template, pairs) in r:
+            d = {}
+            for pair in pairs:
+                (name, value) = pair.split('=', 1)
+                d[slugify(name)] = value
+            template_name = template.title().replace('Template:', '')
+            entry.setdefault(template_name, []).append(d)
+        log.debug("Free Software Directory " + title + ": " + str(entry))
+        return entry

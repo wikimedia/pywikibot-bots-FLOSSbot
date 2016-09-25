@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 import logging
+import mock
 
 import pywikibot
 
@@ -31,6 +32,34 @@ class TestFSD(object):
     def setup_class(self):
         WikidataHelper().login()
 
+    def test_fixup(self):
+        bot = Bot.factory([
+            '--verbose',
+            '--test',
+            '--user=FLOSSbotCI',
+        ])
+        fsd = FSD(bot, bot.args)
+
+        to_fixup = fsd.__getattribute__('Q_' + WikidataHelper.random_name())
+        assert 'not found' == fsd.fixup(to_fixup)
+        fsd.clear_entity_label(to_fixup.getID())
+        to_fixup = pywikibot.ItemPage(fsd.bot.site, to_fixup.getID(), 0)
+        assert 'no label' == fsd.fixup(to_fixup)
+
+        label = 'Loomio'
+        item = fsd.__getattribute__('Q_' + label)
+        # get rid of leftovers in case the item already exists
+        fsd.clear_entity_label(item.getID())
+        item = fsd.__getattribute__('Q_' + label)
+
+        to_fixup = pywikibot.ItemPage(fsd.bot.site, item.getID(), 0)
+        assert 'found' == fsd.fixup(to_fixup)
+
+        to_fixup = pywikibot.ItemPage(fsd.bot.site, item.getID(), 0)
+        assert 'already exists' == fsd.fixup(to_fixup)
+
+        fsd.clear_entity_label(item.getID())
+
     def test_verify(self):
         bot = Bot.factory([
             '--verbose',
@@ -39,11 +68,11 @@ class TestFSD(object):
             '--verification-delay=0',
         ])
         fsd = FSD(bot, bot.args)
-        title = 'Loomio'
-        item = fsd.__getattribute__('Q_' + title)
+        label = 'Loomio'
+        item = fsd.__getattribute__('Q_' + label)
         # get rid of leftovers in case the item already exists
         fsd.clear_entity_label(item.getID())
-        item = fsd.__getattribute__('Q_' + title)
+        item = fsd.__getattribute__('Q_' + label)
 
         log.debug(">> do nothing if there is no Free Software Directory entry")
         to_verify = pywikibot.ItemPage(fsd.bot.site, item.getID(), 0)
@@ -52,7 +81,7 @@ class TestFSD(object):
         log.debug(">> add a Free Software Directory entry")
         entry = pywikibot.Claim(
             fsd.bot.site, fsd.P_Free_Software_Directory_entry, 0)
-        entry.setTarget(title)
+        entry.setTarget(label)
         item.addClaim(entry)
 
         log.debug(">> verified")
@@ -67,6 +96,36 @@ class TestFSD(object):
 
         fsd.clear_entity_label(item.getID())
 
+    @mock.patch('FLOSSbot.fsd.FSD.fetch_fsd')
+    def test_get_fsd(self, m_fetch_fsd):
+        bot = Bot.factory([
+            '--verbose',
+            '--test',
+            '--user=FLOSSbotCI',
+        ])
+        fsd = FSD(bot, bot.args)
+
+        class Page:
+            def __init__(self, _title):
+                self._title = _title
+
+            def __repr__(self):
+                return "Page('" + self._title + "')"
+
+            def title(self):
+                return self._title
+
+        m_fetch_fsd.side_effect = [
+            [
+                (Page('Template:Entry'), ['Name=Loomio']),
+                (Page('Template:Project license'), ['License=LGPLv2']),
+                (Page('Template:Project license'), ['License=LGPLv3']),
+            ],
+        ]
+        assert ({
+            'Entry': [{'name': 'Loomio'}],
+            'Project license': [{'license': 'LGPLv2'}, {'license': 'LGPLv3'}],
+        } == fsd.get_fsd('Loomio'))
 
 # Local Variables:
 # compile-command: "cd .. ; tox -e py3 tests/test_fsd.py"
