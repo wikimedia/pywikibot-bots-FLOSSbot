@@ -129,7 +129,7 @@ class Bot(object):
         for item in self.args.item:
             item = pywikibot.ItemPage(self.site, item, 0)
             for plugin in self.plugins:
-                plugin.run(item)
+                plugin.run_catch(item)
 
     def run_query(self):
         for plugin in self.plugins:
@@ -144,4 +144,4 @@ class Bot(object):
                                                    site=self.site,
                                                    result_type=list):
             for plugin in self.plugins:
-                plugin.run(item)
+                plugin.run_catch(item)

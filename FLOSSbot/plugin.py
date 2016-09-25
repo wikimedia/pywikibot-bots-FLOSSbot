@@ -61,6 +61,13 @@ class Plugin(object):
     def log(self, fun, item, message):
         fun("http://wikidata.org/wiki/" + item.getID() + " " + message)
 
+    def run_catch(self, item):
+        try:
+            self.run(item)
+        except:
+            self.error(item, "failed with an exception")
+            raise
+
     def reset_cache(self):
         self.bot.entities = {
             'property': {},
