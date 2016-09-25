@@ -271,26 +271,7 @@ class Repository(plugin.Plugin):
         """.format(url=url))
 
     def verify_http(self, url):
-        try:
-            #
-            # although head() would be more light weight, some
-            # servers do not respond to it. For instance
-            # https://src.openvz.org/projects/OVZ/ returned 405
-            #
-            # The user agent is required for some servers. For
-            # instance http://marabunta.laotracara.com/descargas/
-            # returns 406 if no User-Agent header is set.
-            #
-            r = requests.get(url,
-                             headers={'User-Agent': 'FLOSSbot'},
-                             verify=False)
-            log.debug("GET " + url + " status " + str(r.status_code))
-            if r.status_code != requests.codes.ok:
-                log.debug("GET " + url + " " + r.text)
-            return r.status_code == requests.codes.ok
-        except Exception as e:
-            log.debug("GET failed with " + str(e))
-            return False
+        return self.http_get(url) is not None
 
     def verify_protocol(self, url, protocol, credentials):
         if protocol == self.Q_git:

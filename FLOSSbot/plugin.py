@@ -19,6 +19,7 @@ import logging
 from datetime import datetime, timedelta
 
 import pywikibot
+import requests
 
 log = logging.getLogger(__name__)
 
@@ -212,3 +213,28 @@ class Plugin(object):
             point_in_time.setTarget(when)
             if not self.args.dry_run:
                 claim.addQualifier(point_in_time, bot=True)
+
+    def http_get(self, url):
+        try:
+            #
+            # although head() would be more light weight, some
+            # servers do not respond to it. For instance
+            # https://src.openvz.org/projects/OVZ/ returned 405
+            #
+            # The user agent is required for some servers. For
+            # instance http://marabunta.laotracara.com/descargas/
+            # returns 406 if no User-Agent header is set.
+            #
+            r = requests.get(url,
+                             headers={'User-Agent': 'FLOSSbot'},
+                             verify=False)
+            log.debug("GET " + url + " status " + str(r.status_code))
+            if r.status_code != requests.codes.ok:
+                log.debug("GET " + url + " " + r.text)
+            if r.status_code == requests.codes.ok:
+                return r
+            else:
+                return None
+        except Exception as e:
+            log.debug("GET failed with " + str(e))
+            return None
