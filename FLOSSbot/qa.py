@@ -63,10 +63,33 @@ class QA(plugin.Plugin):
         self.verify(item)
 
     def verify(self, item):
-        item_dict = item.get()
-        clm_dict = item_dict["claims"]
+        item.get()
+        if self.P_software_quality_assurance not in item.claims:
+            return ['nothing']
+        claims = item.claims[self.P_software_quality_assurance]
+        has_ci = False
+        for claim in claims:
+            if claims[0].getTarget() == self.Q_Continuous_integration:
+                has_ci = True
+        if not has_ci:
+            return ['no ci']
+        repositories = item.claims.get(self.P_source_code_repository, [])
+        if len(repositories) == 0:
+            self.error(item, "has no source code repository")
+            return ['no repository']
+        found = self.extract_ci(item, repositories)
+        if not found:
+            self.error(item, "verify: no ci found")
+            return ['no ci found']
+        self.debug(item, "repositories have " + str(found))
+        url2qa = {}
+        for qa in found:
+            (travis, travis_ci, url) = qa
+            url2qa[travis] = qa
+            url2qa[travis_ci] = qa
         status = []
-        for qa in clm_dict.get(self.P_software_quality_assurance, []):
+        for qa in item.claims[self.P_software_quality_assurance]:
+            found = []
             if qa.getRank() == 'deprecated':
                 self.debug(item, 'deprecated, ignore')
                 continue
@@ -76,60 +99,50 @@ class QA(plugin.Plugin):
             if self.Q_Continuous_integration != qa.getTarget():
                 status.append('not ci')
                 continue
-            repositories = clm_dict.get(self.P_source_code_repository, [])
-            if len(repositories) == 0:
-                self.error(item, "has no source code repository")
-                status.append('no repository')
-                continue
-            found = self.extract_ci(item, repositories)
-            if not found:
-                self.error(item, "no CI found")
-                status.append('no ci found')
-                continue
             ok = True
-            for (qualifier, target) in found.items():
+            for qualifier in (self.P_described_at_URL,
+                              self.P_archive_URL):
                 name = pywikibot.PropertyPage(self.bot.site, qualifier)
                 name.get()
                 name = name.labels['en']
                 if qualifier not in qa.qualifiers:
-                    msg = "missing qualifier " + name
+                    msg = name + " missing qualifier"
                     self.error(item, msg)
                     status.append(msg)
                     ok = False
                     continue
                 existing = qa.qualifiers[qualifier][0].getTarget()
-                if existing != target:
-                    self.error(item, name + " is " + existing +
-                               " but should be " + target)
-                    status.append('inconsistent qualifier ' + name)
+                if existing not in url2qa:
+                    self.error(item, existing + " for " + name + " gone")
+                    status.append(name + ' gone')
                     ok = False
                     continue
-            if ok:
-                self.set_point_in_time(item, qa)
-                status.append('verified')
+                found.append(url2qa[existing])
+            if not ok:
+                continue
+            if found[0] != found[1]:
+                self.error(item, "inconsistent " + str(found[0]) + " != " +
+                           str(found[1]))
+                status.append('inconsistent')
+                continue
+            self.info(item, "VERIFIED " + str(found[0]))
+            self.set_point_in_time(item, qa)
+            status.append('verified')
         return sorted(status)
 
     def extract_ci(self, item, repositories):
-        found = None
-        repository2found = {}
+        result = []
         for repository in repositories:
-            found = self.github2travis(item, repository)
+            url = repository.getTarget()
+            found = self.github2travis(item, url)
             if found:
-                repository2found[repository] = found
-        for (repository, found) in repository2found.items():
-            if repository.getRank() == 'preferred':
-                return found
-        if repository2found:
-            return sorted(repository2found.items(),
-                          key=lambda t: t[0].getTarget())[0][1]
-        else:
-            return None
+                result.append(found)
+        return result
 
     def get(self, *args, **kwargs):
         return requests.get(*args, **kwargs)
 
-    def github2travis(self, item, repository):
-        url = repository.getTarget()
+    def github2travis(self, item, url):
         if not url or 'github.com' not in url:
             return None
         headers = {'User-Agent': 'FLOSSbot'}
@@ -152,30 +165,37 @@ class QA(plugin.Plugin):
         if r.status_code != requests.codes.ok:
             self.debug(item, "SKIP: GET " + travis_ci + " not found")
             return None
-        self.info(item, "FOUND " + travis + " and " + travis_ci)
-        return {
-            self.P_described_at_URL: travis,
-            self.P_archive_URL: travis_ci,
-        }
+        return (travis, travis_ci, url)
 
     def fixup(self, item):
-        item_dict = item.get()
-        clm_dict = item_dict["claims"]
-        if self.P_software_quality_assurance in clm_dict:
+        item.get()
+        if self.P_software_quality_assurance in item.claims:
+            self.debug(item, "a qa claim already exists, ignore")
             return
-        found = self.extract_ci(item, clm_dict.get(
-            self.P_source_code_repository, []))
-        if not found or self.args.dry_run:
+        if self.P_source_code_repository not in item.claims:
+            self.debug(item, "no source code repository, ignore")
             return
+        repositories = item.claims[self.P_source_code_repository]
+        found = self.extract_ci(item, repositories)
+        if not found:
+            self.debug(item, "fixup: no ci found, ignore")
+            return
+        for (travis, travis_ci, repository) in found:
+            self.info(item, "FIXUP " + repository + " " +
+                      travis + " and " + travis_ci)
+            if self.args.dry_run:
+                continue
+            software_quality_assurance = pywikibot.Claim(
+                self.bot.site, self.P_software_quality_assurance, 0)
+            software_quality_assurance.setTarget(self.Q_Continuous_integration)
+            item.addClaim(software_quality_assurance)
+            qualifiers = {
+                self.P_described_at_URL: travis,
+                self.P_archive_URL: travis_ci,
+            }
+            for (qualifier, target) in qualifiers.items():
+                claim = pywikibot.Claim(self.bot.site, qualifier, 0)
+                claim.setTarget(target)
+                software_quality_assurance.addQualifier(claim, bot=True)
 
-        software_quality_assurance = pywikibot.Claim(
-            self.bot.site, self.P_software_quality_assurance, 0)
-        software_quality_assurance.setTarget(self.Q_Continuous_integration)
-        item.addClaim(software_quality_assurance)
-
-        for (qualifier, target) in found.items():
-            claim = pywikibot.Claim(self.bot.site, qualifier, 0)
-            claim.setTarget(target)
-            software_quality_assurance.addQualifier(claim, bot=True)
-
-        self.set_point_in_time(item, software_quality_assurance)
+            self.set_point_in_time(item, software_quality_assurance)

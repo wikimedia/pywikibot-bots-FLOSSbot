@@ -33,6 +33,23 @@ class TestQA(object):
     def setup_class(self):
         WikidataHelper().login()
 
+    def test_verify_no_value(self):
+        bot = Bot.factory([
+            '--verbose',
+            '--test',
+            '--user=FLOSSbotCI',
+        ])
+        qa = QA(bot, bot.args)
+        item = qa.__getattribute__('Q_' + WikidataHelper.random_name())
+        claim = pywikibot.Claim(
+            qa.bot.site, qa.P_software_quality_assurance, 'novalue')
+        claim.setTarget(qa.Q_Continuous_integration)
+        item.addClaim(claim)
+        claim.changeTarget(None, 'novalue')
+        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
+        assert ['no ci'] == qa.verify(to_verify)
+        qa.clear_entity_label(item.getID())
+
     @mock.patch('FLOSSbot.qa.QA.get')
     def test_verify(self, m_get):
         url2code = {}
@@ -57,7 +74,7 @@ class TestQA(object):
 
         log.debug(">> do nothing if there is no source code repository")
         to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        assert [] == qa.verify(to_verify)
+        assert ['nothing'] == qa.verify(to_verify)
 
         log.debug(">> add a source code repository")
         repository = pywikibot.Claim(
@@ -87,8 +104,7 @@ class TestQA(object):
         log.debug(">> inconsistent qualifier")
         repository.changeTarget("http://github.com/other/other")
         to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        assert (['inconsistent qualifier archive URL',
-                 'inconsistent qualifier described at URL'] ==
+        assert (['archive URL gone', 'described at URL gone'] ==
                 qa.verify(to_verify))
 
         log.debug(">> missing qualifier")
@@ -96,8 +112,8 @@ class TestQA(object):
         archive_URL = qa_claim.qualifiers[qa.P_archive_URL][0]
         qa_claim.removeQualifier(archive_URL)
         to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        assert ['inconsistent qualifier described at URL',
-                'missing qualifier archive URL'] == qa.verify(to_verify)
+        assert ['archive URL missing qualifier',
+                'described at URL gone'] == qa.verify(to_verify)
 
         qa.clear_entity_label(item.getID())
 
