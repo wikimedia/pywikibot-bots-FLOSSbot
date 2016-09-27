@@ -74,11 +74,10 @@ class Repository(plugin.Plugin):
         self.verify(item)
 
     def verify(self, item):
-        item_dict = item.get()
-        clm_dict = item_dict["claims"]
+        item.get()
 
         status = {}
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims.get(self.P_source_code_repository, []):
             url = claim.getTarget()
             if claim.getRank() == 'deprecated':
                 self.debug(item, url + ' is deprecated, ignore')
@@ -107,18 +106,20 @@ class Repository(plugin.Plugin):
         self.fixup_rank(item)
 
     def fixup_rank(self, item):
-        item_dict = item.get()
-        clm_dict = item_dict["claims"]
+        item.get()
 
-        if len(clm_dict[self.P_source_code_repository]) == 1:
+        if self.P_source_code_repository not in item.claims:
             return False
 
-        if len(clm_dict[self.P_source_code_repository]) != 2:
+        if len(item.claims[self.P_source_code_repository]) == 1:
+            return False
+
+        if len(item.claims[self.P_source_code_repository]) != 2:
             self.debug(item, "SKIP more than two URLs is too difficult to fix")
             return False
 
         http = []
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims[self.P_source_code_repository]:
             if claim.getRank() == 'preferred':
                 self.debug(item,
                            "SKIP because there already is a preferred URL")
@@ -138,14 +139,16 @@ class Repository(plugin.Plugin):
         return True
 
     def fixup_protocol(self, item):
-        item_dict = item.get()
-        clm_dict = item_dict["claims"]
+        item.get()
+
+        if self.P_source_code_repository not in item.claims:
+            return False
 
         urls = []
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims[self.P_source_code_repository]:
             urls.append(claim.getTarget())
 
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims[self.P_source_code_repository]:
             url = claim.getTarget()
             extracted = self.extract_repository(url)
             if extracted and extracted not in urls:
@@ -164,10 +167,10 @@ class Repository(plugin.Plugin):
                         claim.changeRank('preferred')
                     self.info(item, "PREFERRED set to " + url)
 
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims[self.P_source_code_repository]:
             self.fixup_url(claim)
 
-        for claim in clm_dict[self.P_source_code_repository]:
+        for claim in item.claims[self.P_source_code_repository]:
             if self.P_protocol in claim.qualifiers:
                 self.debug(item, "IGNORE " + claim.getTarget() +
                            " because it already has a protocol")
