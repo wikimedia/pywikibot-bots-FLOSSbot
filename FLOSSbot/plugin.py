@@ -61,6 +61,7 @@ class Plugin(object):
     def log(self, fun, item, message):
         label = item.labels.get('en', 'no label')
         fun("http://wikidata.org/wiki/" + item.getID() +
+            " " + self.__class__.__name__ +
             " " + label + " " + message)
 
     def run_catch(self, item):
