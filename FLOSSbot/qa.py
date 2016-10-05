@@ -42,16 +42,20 @@ class QA(plugin.Plugin):
         format_args = {
             'repository': self.P_source_code_repository,
             'qa': self.P_software_quality_assurance,
-            'point_in_time': self.P_point_in_time,
+            'retrieved': self.P_retrieved,
             'delay': self.args.verification_delay,
         }
         if filter == 'qa-verify':
             query = """
             SELECT DISTINCT ?item WHERE {{
               ?item p:{qa} ?qa .
-              OPTIONAL {{ ?qa pq:{point_in_time} ?pit }}
-              FILTER (!BOUND(?pit) ||
-                      ?pit < (now() - "P{delay}D"^^xsd:duration))
+              OPTIONAL {{
+                 ?qa prov:wasDerivedFrom/
+                     <http://www.wikidata.org/prop/reference/{retrieved}>
+                     ?retrieved
+              }}
+              FILTER (!BOUND(?retrieved) ||
+                      ?retrieved < (now() - "P{delay}D"^^xsd:duration))
             }} ORDER BY ?item
             """.format(**format_args)
         else:
@@ -126,7 +130,7 @@ class QA(plugin.Plugin):
                 status.append('inconsistent')
                 continue
             self.info(item, "VERIFIED " + str(found[0]))
-            self.set_point_in_time(item, qa)
+            self.set_retrieved(item, qa)
             status.append('verified')
         return sorted(status)
 
@@ -198,4 +202,4 @@ class QA(plugin.Plugin):
                 claim.setTarget(target)
                 software_quality_assurance.addQualifier(claim, bot=True)
 
-            self.set_point_in_time(item, software_quality_assurance)
+            self.set_retrieved(item, software_quality_assurance)

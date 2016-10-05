@@ -95,7 +95,7 @@ class Repository(plugin.Plugin):
             if self.verify_protocol(url, protocol, credentials):
                 self.info(item, "VERIFIED " + url)
                 status[url] = 'verified'
-                self.set_point_in_time(item, claim)
+                self.set_retrieved(item, claim)
             else:
                 self.error(item, "VERIFY FAIL " + url)
                 status[url] = 'fail'
@@ -184,7 +184,7 @@ class Repository(plugin.Plugin):
             protocol.setTarget(target_protocol)
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
-                self.set_point_in_time(item, claim)
+                self.set_retrieved(item, claim)
             self.info(item, "SET protocol of " + claim.getTarget())
 
     def guess_protocol_from_url(self, url):

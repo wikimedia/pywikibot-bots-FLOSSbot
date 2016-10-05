@@ -195,11 +195,17 @@ class Plugin(object):
                     break
         return found
 
+    def get_source(self, claim, id):
+        for source in claim.getSources():
+            if id in source:
+                return source[id]
+        return None
+
     def need_verification(self, claim):
-        now = datetime.utcnow()
-        if self.P_point_in_time in claim.qualifiers:
-            previous = claim.qualifiers[self.P_point_in_time][0]
-            previous = previous.getTarget()
+        previous = self.get_source(claim, self.P_retrieved)
+        if previous:
+            now = datetime.utcnow()
+            previous = previous[0].getTarget()
             previous = datetime(year=previous.year,
                                 month=previous.month,
                                 day=previous.day)
@@ -208,22 +214,22 @@ class Plugin(object):
         else:
             return True
 
-    def set_point_in_time(self, item, claim, now=datetime.utcnow()):
+    def set_retrieved(self, item, claim, now=datetime.utcnow()):
         when = pywikibot.WbTime(now.year, now.month, now.day)
-        if self.P_point_in_time in claim.qualifiers:
-            self.debug(item, "updating point-in-time")
-            point_in_time = claim.qualifiers[self.P_point_in_time][0]
-            point_in_time.setTarget(when)
+        retrieved = self.get_source(claim, self.P_retrieved)
+        if retrieved:
+            self.debug(item, "updating retrieved")
+            retrieved[0].setTarget(when)
             if not self.args.dry_run:
                 self.bot.site.save_claim(claim)
         else:
-            self.debug(item, "setting point-in-time")
-            point_in_time = pywikibot.Claim(self.bot.site,
-                                            self.P_point_in_time,
-                                            isQualifier=True)
-            point_in_time.setTarget(when)
+            self.debug(item, "setting retrieved")
+            retrieved = pywikibot.Claim(self.bot.site,
+                                        self.P_retrieved,
+                                        isReference=True)
+            retrieved.setTarget(when)
             if not self.args.dry_run:
-                claim.addQualifier(point_in_time, bot=True)
+                claim.addSource(retrieved)
 
     def http_get(self, url):
         try:

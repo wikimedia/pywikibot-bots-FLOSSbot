@@ -90,7 +90,7 @@ class TestPlugin(object):
             assert (datatype ==
                     wikidata_content[wikidata_property]['datatype']), attr
 
-    def test_set_point_in_time(self):
+    def test_set_retrieved(self):
         bot = Bot.factory([
             '--test',
             '--user=FLOSSbotCI',
@@ -102,9 +102,9 @@ class TestPlugin(object):
                                 0)
         claim.setTarget("http://repo.com/some")
         item.addClaim(claim)
-        plugin.set_point_in_time(item, claim)
+        plugin.set_retrieved(item, claim)
         assert plugin.need_verification(claim) is False
-        plugin.set_point_in_time(item, claim, date(1965, 11, 2))
+        plugin.set_retrieved(item, claim, date(1965, 11, 2))
         assert plugin.need_verification(claim) is True
         plugin.clear_entity_label(item.getID())
 

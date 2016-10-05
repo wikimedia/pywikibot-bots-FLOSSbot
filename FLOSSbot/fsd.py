@@ -41,16 +41,20 @@ class FSD(plugin.Plugin):
     def get_query(self, filter):
         format_args = {
             'fsd': self.P_Free_Software_Directory_entry,
-            'point_in_time': self.P_point_in_time,
+            'retrieved': self.P_retrieved,
             'delay': self.args.verification_delay,
         }
         if filter == 'fsd-verify':
             query = """
             SELECT DISTINCT ?item WHERE {{
               ?item p:{fsd} ?fsd .
-              OPTIONAL {{ ?fsd pq:{point_in_time} ?pit }}
-              FILTER (!BOUND(?pit) ||
-                      ?pit < (now() - "P{delay}D"^^xsd:duration))
+              OPTIONAL {{
+                 ?fsd prov:wasDerivedFrom/
+                      <http://www.wikidata.org/prop/reference/{retrieved}>
+                      ?retrieved
+              }}
+              FILTER (!BOUND(?retrieved) ||
+                      ?retrieved < (now() - "P{delay}D"^^xsd:duration))
             }} ORDER BY ?item
             """.format(**format_args)
         else:
@@ -93,7 +97,7 @@ class FSD(plugin.Plugin):
                 self.bot.site, self.P_Free_Software_Directory_entry, 0)
             entry.setTarget(title.replace(' ', '_'))
             item.addClaim(entry)
-            self.set_point_in_time(item, entry)
+            self.set_retrieved(item, entry)
         self.info(item, "FOUND Free Software Directory entry " +
                   "http://directory.fsf.org/wiki/" + title)
         return 'found'
@@ -112,7 +116,7 @@ class FSD(plugin.Plugin):
         fsd = self.get_fsd(claim.getTarget())
         if fsd:
             self.debug(item, " Free Software Directory " + str(fsd))
-            self.set_point_in_time(item, claim)
+            self.set_retrieved(item, claim)
             self.info(item, "VERIFIED")
             return 'verified'
         else:
