@@ -141,6 +141,13 @@ class Repository(plugin.Plugin):
         self.info(item, "PREFERRED set to " + http[0].getTarget())
         return True
 
+    def get_source_code_repositories(self, item):
+        claims = []
+        for claim in item.claims.get(self.P_source_code_repository, []):
+            if claim.getTarget() is not None:
+                claims.append(claim)
+        return claims
+
     def fixup_protocol(self, item):
         item.get()
 
