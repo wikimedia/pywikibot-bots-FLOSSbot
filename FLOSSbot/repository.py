@@ -185,7 +185,9 @@ class Repository(plugin.Plugin):
             if not self.args.dry_run:
                 claim.addQualifier(protocol, bot=True)
                 self.set_retrieved(item, claim)
-            self.info(item, "SET protocol of " + claim.getTarget())
+            target_protocol.get()
+            self.info(item, "SET protocol of " + claim.getTarget() + " to " +
+                      target_protocol.labels['en'])
 
     def guess_protocol_from_url(self, url):
         if 'github.com' in url:
