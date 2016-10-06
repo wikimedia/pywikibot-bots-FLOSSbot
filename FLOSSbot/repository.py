@@ -147,11 +147,13 @@ class Repository(plugin.Plugin):
         if self.P_source_code_repository not in item.claims:
             return False
 
+        repositories = self.get_source_code_repositories(item)
+
         urls = []
-        for claim in item.claims[self.P_source_code_repository]:
+        for claim in repositories:
             urls.append(claim.getTarget())
 
-        for claim in item.claims[self.P_source_code_repository]:
+        for claim in repositories:
             url = claim.getTarget()
             extracted = self.extract_repository(url)
             if extracted and extracted not in urls:
@@ -170,10 +172,12 @@ class Repository(plugin.Plugin):
                         claim.changeRank('preferred')
                     self.info(item, "PREFERRED set to " + url)
 
-        for claim in item.claims[self.P_source_code_repository]:
+        repositories = self.get_source_code_repositories(item)
+
+        for claim in repositories:
             self.fixup_url(claim)
 
-        for claim in item.claims[self.P_source_code_repository]:
+        for claim in repositories:
             if self.P_protocol in claim.qualifiers:
                 self.debug(item, "IGNORE " + claim.getTarget() +
                            " because it already has a protocol")
