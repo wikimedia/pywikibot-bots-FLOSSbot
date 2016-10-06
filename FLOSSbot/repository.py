@@ -240,7 +240,10 @@ class Repository(plugin.Plugin):
             password = ''
         return util.sh_bool("""
         set -e
-        timeout 30 svn info {url} {user} {password}
+        failures=unknown-ca,cn-mismatch,expired,not-yet-valid,other
+        timeout 30 svn info \
+           --trust-server-cert-failures=$failures --non-interactive \
+           {url} {user} {password}
         """.format(url=url, user=user, password=password))
 
     def verify_fossil(self, url):
