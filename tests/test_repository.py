@@ -93,6 +93,21 @@ class TestRepository(object):
             self.r.guess_protocol_from_url('example.org')
             is None)
 
+    def test_verify_no_value(self):
+        item = self.r.__getattribute__('Q_' + WikidataHelper.random_name())
+        claim = pywikibot.Claim(self.r.bot.site,
+                                self.r.P_source_code_repository,
+                                'novalue')
+        # the following sequence is wierd but it's the only combo
+        # that works with pywikibot because of some broken
+        # code paths when 'novalue' is set
+        claim.setTarget('http://url.to.be.ignored')
+        item.addClaim(claim)
+        claim.changeTarget(None, 'novalue')
+        item.get(force=True)
+        assert {None: 'novalue or unknown'} == self.r.verify(item)
+        self.r.clear_entity_label(item.getID())
+
     def test_verify(self):
         item = self.r.__getattribute__('Q_' + WikidataHelper.random_name())
         claim = pywikibot.Claim(self.r.bot.site,

@@ -79,6 +79,9 @@ class Repository(plugin.Plugin):
         status = {}
         for claim in item.claims.get(self.P_source_code_repository, []):
             url = claim.getTarget()
+            if url is None:
+                status[url] = 'novalue or unknown'
+                continue
             if claim.getRank() == 'deprecated':
                 self.debug(item, url + ' is deprecated, ignore')
                 continue
