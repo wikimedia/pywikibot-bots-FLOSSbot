@@ -176,6 +176,14 @@ class Plugin(object):
         }
         log.debug("clear " + id + " label")
         self.bot.site.editEntity({'id': id}, data)
+        while True:
+            if id.startswith('P'):
+                entity = pywikibot.PropertyPage(self.bot.site, id)
+            else:
+                entity = pywikibot.ItemPage(self.bot.site, id, 0)
+            entity.get(force=True)
+            if entity.labels.get('en') is None:
+                break
         self.reset_cache()
 
     def __getattribute__(self, name):
