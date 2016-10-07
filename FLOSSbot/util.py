@@ -42,12 +42,12 @@ def sh(command, input=None):
         shell=True,
         bufsize=1)
     if stdin is not None:
-        proc.stdin.write(input)
+        proc.stdin.write(input.encode('ascii', 'ignore'))
         proc.stdin.close()
     lines = []
     with proc.stdout:
         for line in iter(proc.stdout.readline, b''):
-            line = line.decode('utf-8')
+            line = line.decode('utf-8', 'ignore')
             lines.append(line)
             log.debug(line.strip().encode('ascii', 'ignore'))
     if proc.wait() != 0:
