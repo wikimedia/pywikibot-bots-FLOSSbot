@@ -172,15 +172,18 @@ class Plugin(object):
         self.bot.site.editEntity({'new': type}, entity)
 
     def clear_entity_label(self, id):
+        self.set_entity_label(id, '')
+
+    def set_entity_label(self, id, label):
         data = {
             "labels": {
                 "en": {
                     "language": "en",
-                    "value": "",
+                    "value": label,
                 }
             }
         }
-        log.debug("clear " + id + " label")
+        log.debug("set " + id + " label to '" + label + "'")
         self.bot.site.editEntity({'id': id}, data)
         while True:
             if id.startswith('P'):
@@ -188,7 +191,9 @@ class Plugin(object):
             else:
                 entity = pywikibot.ItemPage(self.bot.site, id, 0)
             entity.get(force=True)
-            if entity.labels.get('en') is None:
+            if label == '' and entity.labels.get('en') is None:
+                break
+            if label != '' and label == entity.labels.get('en'):
                 break
         self.reset_cache()
 
