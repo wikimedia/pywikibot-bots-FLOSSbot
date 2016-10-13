@@ -16,6 +16,7 @@
 #
 import argparse
 import logging
+import re
 from datetime import datetime, timedelta
 
 import pywikibot
@@ -104,6 +105,10 @@ class Plugin(object):
         },
     }
 
+    @staticmethod
+    def normalize_name(name):
+        return re.sub('[-_]', ' ', name)
+
     def search_entity(self, site, name, **kwargs):
         if name in Plugin.authoritative[site.code]:
             candidate = pywikibot.ItemPage(
@@ -113,7 +118,8 @@ class Plugin(object):
         candidates = []
         for p in site.search_entities(name, 'en', **kwargs):
             log.debug("looking for entity " + name + ", found " + str(p))
-            if p.get('label') == name:
+            if (Plugin.normalize_name(p.get('label')) ==
+                    Plugin.normalize_name(name)):
                 if kwargs['type'] == 'property':
                     candidates.append(p)
                 else:

@@ -112,9 +112,11 @@ class TestPlugin(object):
         bot = Bot.factory([
             '--test',
             '--user=FLOSSbotCI',
+            '--verbose',
         ])
         plugin = Plugin(bot, bot.args)
-        name = WikidataHelper.random_name()
+        # ensure space, - and _ are accepted
+        name = WikidataHelper.random_name() + "-some thing_else"
         entity = {
             "labels": {
                 "en": {
