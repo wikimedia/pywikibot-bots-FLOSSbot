@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 
 import pywikibot
 import requests
+from pywikibot import pagegenerators as pg
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class Plugin(object):
         self.args = args
         self.bot = bot
         self.reset_cache()
+        self.dbname2item = {}
 
     @staticmethod
     def get_parser():
@@ -274,3 +276,21 @@ class Plugin(object):
         except Exception as e:
             log.debug("GET failed with " + str(e))
             return None
+
+    def get_sitelink_item(self, dbname):
+        if dbname not in self.dbname2item:
+            query = """
+            SELECT DISTINCT ?item WHERE {{
+              ?item wdt:{Wikimedia_database_name} '{dbname}'.
+            }}
+            """.format(
+                Wikimedia_database_name=self.P_Wikimedia_database_name,
+                dbname=dbname,
+            )
+            for item in pg.WikidataSPARQLPageGenerator(
+                    query, site=self.bot.site):
+                item.get()
+                assert dbname == item.claims[
+                    self.P_Wikimedia_database_name][0].getTarget()
+                self.dbname2item[dbname] = item
+        return self.dbname2item[dbname]

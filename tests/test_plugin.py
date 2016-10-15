@@ -150,3 +150,11 @@ class TestPlugin(object):
         Plugin.authoritative['test'][name] = second.getID()
         found = plugin.search_entity(plugin.bot.site, name, type='item')
         assert found.getID() == second.getID()
+
+    def test_get_sitelink_item(self):
+        bot = Bot.factory(['--verbose'])
+        plugin = Plugin(bot, bot.args)
+        enwiki = plugin.get_sitelink_item('enwiki')
+        assert 'English Wikipedia' == enwiki.labels['en']
+        frwiki = plugin.get_sitelink_item('frwiki')
+        assert 'French Wikipedia' == frwiki.labels['en']
