@@ -277,6 +277,15 @@ class Plugin(object):
             log.debug("GET failed with " + str(e))
             return None
 
+    def get_redirects(self, title, lang):
+        log.debug("get_redirects " + title + " " + lang)
+        site = pywikibot.site.APISite.fromDBName(lang + 'wiki')
+        p = pywikibot.Page(site, title)
+        return [r.title() for r in p.getReferences(follow_redirects=False,
+                                                   withTemplateInclusion=False,
+                                                   redirectsOnly=True,
+                                                   total=5000)]
+
     def get_sitelink_item(self, dbname):
         if dbname not in self.dbname2item:
             query = """

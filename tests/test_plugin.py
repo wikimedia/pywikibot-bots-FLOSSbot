@@ -151,6 +151,12 @@ class TestPlugin(object):
         found = plugin.search_entity(plugin.bot.site, name, type='item')
         assert found.getID() == second.getID()
 
+    def test_get_redirects(self):
+        bot = Bot.factory(['--verbose'])
+        plugin = Plugin(bot, bot.args)
+        titles = plugin.get_redirects('GNU General Public License', 'en')
+        assert 'GPL' in titles
+
     def test_get_sitelink_item(self):
         bot = Bot.factory(['--verbose'])
         plugin = Plugin(bot, bot.args)
