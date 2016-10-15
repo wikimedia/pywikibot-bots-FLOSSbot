@@ -151,6 +151,14 @@ class TestPlugin(object):
         found = plugin.search_entity(plugin.bot.site, name, type='item')
         assert found.getID() == second.getID()
 
+    def test_translate_title(self):
+        bot = Bot.factory(['--verbose'])
+        plugin = Plugin(bot, bot.args)
+        assert 'GNU Emacs' == plugin.translate_title('GNU Emacs', 'fr')
+        assert 'ГНУ Емакс' == plugin.translate_title('GNU Emacs', 'sr')
+        assert 'Licence' == plugin.translate_title('License', 'fr')
+        assert plugin.translate_title('License', '??') is None
+
     def test_get_redirects(self):
         bot = Bot.factory(['--verbose'])
         plugin = Plugin(bot, bot.args)

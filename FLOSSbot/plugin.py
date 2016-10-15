@@ -32,6 +32,7 @@ class Plugin(object):
         self.args = args
         self.bot = bot
         self.reset_cache()
+        self.title_translation = {}
         self.dbname2item = {}
 
     @staticmethod
@@ -276,6 +277,17 @@ class Plugin(object):
         except Exception as e:
             log.debug("GET failed with " + str(e))
             return None
+
+    def translate_title(self, title, lang):
+        if title not in self.title_translation:
+            site = pywikibot.site.APISite.fromDBName('enwiki')
+            translation = {'en': title}
+            p = pywikibot.Page(site, title)
+            for l in p.langlinks():
+                # License (juridique): the (...) is for disambiguation
+                translation[l.site.code] = re.sub('\s*\([^)]*\)', '', l.title)
+            self.title_translation[title] = translation
+        return self.title_translation[title].get(lang)
 
     def get_redirects(self, title, lang):
         log.debug("get_redirects " + title + " " + lang)
