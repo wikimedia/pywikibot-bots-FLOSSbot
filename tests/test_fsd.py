@@ -16,8 +16,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 import logging
-import mock
 
+import mock
 import pywikibot
 
 from FLOSSbot.bot import Bot
