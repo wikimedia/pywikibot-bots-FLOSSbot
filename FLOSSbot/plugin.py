@@ -278,6 +278,37 @@ class Plugin(object):
             log.debug("GET failed with " + str(e))
             return None
 
+    def get_template_field(self, item, lang2field, lang2pattern):
+        lang2value = {}
+        for dbname in item.sitelinks.keys():
+            site = pywikibot.site.APISite.fromDBName(dbname)
+            pattern = lang2pattern.get(site.code, lang2pattern['*'])
+            p = pywikibot.Page(site, item.sitelinks[dbname])
+            for (template, pairs) in p.templatesWithParams():
+                self.debug(item, site.code + " template " + template.title())
+                if pattern in template.title():
+                    for pair in pairs:
+                        found = pair.split('=', 1)
+                        if len(found) == 1:
+                            continue
+                        (name, value) = found
+                        if site.code in lang2field:
+                            translated = lang2field[site.code]
+                        elif 'en' in lang2field:
+                            translated = self.translate_title(lang2field['en'],
+                                                              site.code)
+                        else:
+                            translated = None
+                        self.debug(item, site.code + " compare " +
+                                   str(translated).lower() + " and " +
+                                   name.lower())
+                        if (value and
+                                translated and
+                                name.lower() == translated.lower()):
+                            lang2value[site.code] = value
+        self.debug(item, 'get_template_field ' + str(lang2value))
+        return lang2value
+
     def translate_title(self, title, lang):
         if title not in self.title_translation:
             site = pywikibot.site.APISite.fromDBName('enwiki')

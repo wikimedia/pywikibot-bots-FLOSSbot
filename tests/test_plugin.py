@@ -151,6 +151,20 @@ class TestPlugin(object):
         found = plugin.search_entity(plugin.bot.site, name, type='item')
         assert found.getID() == second.getID()
 
+    def test_get_template_field(self):
+        bot = Bot.factory(['--verbose'])
+        plugin = Plugin(bot, bot.args)
+        item = plugin.Q_GNU_Emacs
+        expected = {
+            'fr': 'licence',
+            'en': 'license',
+        }
+        item.get()
+        lang2field = {'en': 'License'}
+        lang2pattern = {'*': 'Infobox'}
+        actual = plugin.get_template_field(item, lang2field, lang2pattern)
+        assert actual.keys() == expected.keys()
+
     def test_translate_title(self):
         bot = Bot.factory(['--verbose'])
         plugin = Plugin(bot, bot.args)
