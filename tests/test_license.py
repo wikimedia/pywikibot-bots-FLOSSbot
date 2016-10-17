@@ -68,7 +68,9 @@ class TestLicense(object):
     def test_template_parse_license(self):
         bot = Bot.factory(['--verbose'] + self.args)
         license = License(bot, bot.args)
-        found = license.template_parse_license('[[GPL]] [[MIT|]]', 'en')
+        found = license.template_parse_license(
+            '[[GNU GPL]] [[MIT/X11 license|]]', 'en')
+        assert 2 == len(found)
         for item in found:
             item.get()
             license.debug(item, "FOUND")

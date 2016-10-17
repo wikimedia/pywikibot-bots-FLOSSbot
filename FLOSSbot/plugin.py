@@ -321,13 +321,14 @@ class Plugin(object):
         return self.title_translation[title].get(lang)
 
     def get_redirects(self, title, lang):
-        log.debug("get_redirects " + title + " " + lang)
         site = pywikibot.site.APISite.fromDBName(lang + 'wiki')
         p = pywikibot.Page(site, title)
-        return [r.title() for r in p.getReferences(follow_redirects=False,
-                                                   withTemplateInclusion=False,
-                                                   redirectsOnly=True,
-                                                   total=5000)]
+        r = [r.title() for r in p.getReferences(follow_redirects=False,
+                                                withTemplateInclusion=False,
+                                                redirectsOnly=True,
+                                                total=5000)]
+        log.debug("get_redirects " + title + " " + lang + " " + str(r))
+        return r
 
     def get_sitelink_item(self, dbname):
         if dbname not in self.dbname2item:

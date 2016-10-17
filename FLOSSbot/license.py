@@ -118,16 +118,19 @@ class License(plugin.Plugin):
         item.get()
         self.debug(item, " verifying")
 
+    def set_en_licenses(self):
+        self.licenses = {
+            'en': {
+                'names': dict([
+                    (l, l) for (l, i) in self.license2item.items()
+                ]),
+            },
+        }
+
     def get_names(self, lang):
         if self.license2item is None:
             self.set_license2item()
-            self.licenses = {
-                'en': {
-                    'names': dict([
-                        (l, l) for (l, i) in self.license2item.items()
-                    ]),
-                },
-            }
+            self.set_en_licenses()
             self.set_redirects('en')
         if lang not in self.licenses:
             self.set_names(lang)
@@ -193,8 +196,8 @@ class License(plugin.Plugin):
             licenses = []
             for license in self.args.license:
                 licenses.append("STR(?label) = '" + license + "'")
-            licenses = ('?item rdfs:label ?label FILTER(' +
-                        " || ".join(licenses) + ")")
+            licenses = ('?item rdfs:label ?label FILTER((' +
+                        ") || (".join(licenses) + "))")
             format_args['licenses'] = licenses
         query = """
             SELECT DISTINCT ?item WHERE {{
