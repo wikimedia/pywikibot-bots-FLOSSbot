@@ -121,7 +121,8 @@ class Plugin(object):
         candidates = []
         for p in site.search_entities(name, 'en', **kwargs):
             log.debug("looking for entity " + name + ", found " + str(p))
-            if (Plugin.normalize_name(p.get('label')) ==
+            if ('label' in p and
+                    Plugin.normalize_name(p['label']) ==
                     Plugin.normalize_name(name)):
                 if kwargs['type'] == 'property':
                     candidates.append(p)
