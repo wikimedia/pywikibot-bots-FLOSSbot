@@ -230,6 +230,7 @@ class License(plugin.Plugin):
         results = set()
         for name in (re.findall('\[\[([^|\]]+?)\]\]', license) +
                      re.findall('\[\[([^|\]]+?)\|[^\]]*\]\]', license)):
+            name = re.sub('#.*', '', name)
             log.debug("template_parse_license: " + name)
             if name in free_software_licenses:
                 results.add(self.get_item(name, lang))

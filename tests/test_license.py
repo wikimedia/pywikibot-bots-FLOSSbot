@@ -69,7 +69,7 @@ class TestLicense(object):
         bot = Bot.factory(['--verbose'] + self.args)
         license = License(bot, bot.args)
         found = license.template_parse_license(
-            '[[GNU GPL]] [[MIT/X11 license|]]', 'en')
+            '[[GNU GPL#v2]] [[MIT/X11 license|]]', 'en')
         assert 2 == len(found)
         for item in found:
             item.get()
