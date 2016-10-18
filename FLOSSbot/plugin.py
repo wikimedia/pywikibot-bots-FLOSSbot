@@ -211,12 +211,15 @@ class Plugin(object):
             return super(Plugin, self).__getattribute__(name)
         label = " ".join(name.split('_')[1:])
         found = self.lookup_entity(label, type=type)
-        if not found and self.args.test:
-            self.create_entity(type, label)
-            for i in range(120):
-                found = self.lookup_entity(label, type=type)
-                if found is not None:
-                    break
+        if not found:
+            if self.args.test:
+                self.create_entity(type, label)
+                for i in range(120):
+                    found = self.lookup_entity(label, type=type)
+                    if found is not None:
+                        break
+            else:
+                raise ValueError("found no items for " + name)
         return found
 
     def get_source(self, claim, id):
