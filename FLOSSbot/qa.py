@@ -76,14 +76,15 @@ class QA(plugin.Plugin):
             if claim.getTarget() == self.Q_Continuous_integration:
                 has_ci = True
         if not has_ci:
+            self.debug(item, "verify: no ci to verify")
             return ['no ci']
         repositories = item.claims.get(self.P_source_code_repository, [])
         if len(repositories) == 0:
-            self.error(item, "has no source code repository")
+            self.debug(item, "verify: has no source code repository")
             return ['no repository']
         found = self.extract_ci(item, repositories)
         if not found:
-            self.error(item, "verify: no ci found")
+            self.debug(item, "verify: no ci found")
             return ['no ci found']
         self.debug(item, "repositories have " + str(found))
         url2qa = {}
