@@ -17,6 +17,7 @@
 import argparse
 import logging
 import re
+from urllib.parse import urlparse
 
 import pywikibot
 import requests
@@ -232,7 +233,21 @@ class Repository(plugin.Plugin):
             return self.Q_Subversion
         if url.startswith('ftp://'):
             return self.Q_File_Transfer_Protocol
+        if url.startswith('cvs://'):
+            return self.Q_Concurrent_Versions_System
         return None
+
+    def verify_cvs(self, url, credentials):
+        parsed = urlparse(url)
+        cvsroot = ':pserver:' + parsed.netloc + ':' + parsed.path
+        return util.sh_bool("""
+        set -e
+        rm -fr /tmp/tmpclone
+        mkdir -p /tmp/tmpclone
+        cd /tmp/tmpclone
+        timeout 30 cvs -d {cvsroot} -z3 get . || true
+        test -d CVSROOT
+        """.format(cvsroot=cvsroot))
 
     def verify_git(self, url):
         return util.sh_bool("timeout 30 git ls-remote " + url + " HEAD")
@@ -309,6 +324,8 @@ class Repository(plugin.Plugin):
             return self.verify_http(url)
         elif protocol == self.Q_File_Transfer_Protocol:
             return self.verify_ftp(url)
+        elif protocol == self.Q_Concurrent_Versions_System:
+            return self.verify_cvs(url, credentials)
         return None
 
     def try_protocol(self, url, credentials):
