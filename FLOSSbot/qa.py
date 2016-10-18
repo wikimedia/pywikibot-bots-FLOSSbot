@@ -73,7 +73,7 @@ class QA(plugin.Plugin):
         claims = item.claims[self.P_software_quality_assurance]
         has_ci = False
         for claim in claims:
-            if claims[0].getTarget() == self.Q_Continuous_integration:
+            if claim.getTarget() == self.Q_Continuous_integration:
                 has_ci = True
         if not has_ci:
             return ['no ci']
