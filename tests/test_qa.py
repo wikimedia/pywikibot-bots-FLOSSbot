@@ -46,8 +46,8 @@ class TestQA(object):
         claim.setTarget(qa.Q_Continuous_integration)
         item.addClaim(claim)
         claim.changeTarget(None, 'novalue')
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        assert ['no ci'] == qa.verify(to_verify)
+        item.get(force=True)
+        assert ['no ci'] == qa.verify(item)
         qa.clear_entity_label(item.getID())
 
     @mock.patch('FLOSSbot.qa.QA.get')
@@ -73,8 +73,8 @@ class TestQA(object):
         item = qa.__getattribute__('Q_' + WikidataHelper.random_name())
 
         log.debug(">> do nothing if there is no source code repository")
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        assert ['nothing'] == qa.verify(to_verify)
+        item.get(force=True)
+        assert ['nothing'] == qa.verify(item)
 
         log.debug(">> add a source code repository")
         repository = pywikibot.Claim(
@@ -84,36 +84,36 @@ class TestQA(object):
         item.addClaim(repository)
 
         log.debug(">> add a qa statement")
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
-        qa.fixup(to_verify)
+        item.get(force=True)
+        qa.fixup(item)
 
         log.debug(">> no ci found")
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
+        item.get(force=True)
         url2code['https://travis-ci.org/FAKE1/FAKE2'] = 404
-        assert ['no ci found'] == qa.verify(to_verify)
+        assert ['no ci found'] == qa.verify(item)
 
         log.debug(">> verified")
         del url2code['https://travis-ci.org/FAKE1/FAKE2']
-        assert ['verified'] == qa.verify(to_verify)
+        assert ['verified'] == qa.verify(item)
 
         log.debug(">> no need")
         qa.args.verification_delay = 30
-        assert ['no need'] == qa.verify(to_verify)
+        assert ['no need'] == qa.verify(item)
         qa.args.verification_delay = 0
 
         log.debug(">> inconsistent qualifier")
         repository.changeTarget("http://github.com/other/other")
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
+        item.get(force=True)
         assert (['archive URL gone', 'described at URL gone'] ==
-                qa.verify(to_verify))
+                qa.verify(item))
 
         log.debug(">> missing qualifier")
-        qa_claim = to_verify.claims[qa.P_software_quality_assurance][0]
+        qa_claim = item.claims[qa.P_software_quality_assurance][0]
         archive_URL = qa_claim.qualifiers[qa.P_archive_URL][0]
         qa_claim.removeQualifier(archive_URL)
-        to_verify = pywikibot.ItemPage(qa.bot.site, item.getID(), 0)
+        item.get(force=True)
         assert ['archive URL missing qualifier',
-                'described at URL gone'] == qa.verify(to_verify)
+                'described at URL gone'] == qa.verify(item)
 
         qa.clear_entity_label(item.getID())
 
