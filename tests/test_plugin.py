@@ -49,11 +49,12 @@ class TestPlugin(object):
             '--user=FLOSSbotCI',
         ])
         plugin = Plugin(bot, bot.args)
-        item = plugin.Q_git
+        name = 'Q_' + WikidataHelper.random_name()
+        item = plugin.__getattribute__(name)
         assert 1 == len(plugin.bot.entities['item'])
         plugin.clear_entity_label(item.getID())
         assert 0 == len(plugin.bot.entities['item'])
-        item = plugin.Q_git
+        item = plugin.__getattribute__(name)
         assert 1 == len(plugin.bot.entities['item'])
 
         property2datatype = {
