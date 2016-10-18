@@ -81,7 +81,7 @@ class TestRepository(object):
     def test_guessproto__url_svn_schema(self):
         assert(
             self.r.guess_protocol_from_url('svn://example.org')
-            == self.r.Q_Apache_Subversion)
+            == self.r.Q_Subversion)
 
     def test_guessproto__url_ftp_schema(self):
         assert(

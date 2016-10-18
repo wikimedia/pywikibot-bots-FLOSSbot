@@ -229,7 +229,7 @@ class Repository(plugin.Plugin):
         if url.startswith('git://'):
             return self.Q_git
         if url.startswith('svn://'):
-            return self.Q_Apache_Subversion
+            return self.Q_Subversion
         if url.startswith('ftp://'):
             return self.Q_File_Transfer_Protocol
         return None
@@ -302,7 +302,7 @@ class Repository(plugin.Plugin):
             return self.verify_fossil(url)
         elif protocol == self.Q_GNU_Bazaar:
             return self.verify_bzr(url)
-        elif protocol == self.Q_Apache_Subversion:
+        elif protocol == self.Q_Subversion:
             return self.verify_svn(url, credentials)
         elif (protocol == self.Q_Hypertext_Transfer_Protocol or
               protocol == self.Q_HTTPS):
@@ -317,7 +317,7 @@ class Repository(plugin.Plugin):
         elif self.verify_hg(url):
             return self.Q_Mercurial
         elif self.verify_svn(url, credentials):
-            return self.Q_Apache_Subversion
+            return self.Q_Subversion
         elif self.verify_bzr(url):
             return self.Q_GNU_Bazaar
         elif self.verify_fossil(url):

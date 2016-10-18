@@ -103,6 +103,7 @@ class Plugin(object):
         'wikidata': {
             'git': 'Q186055',
             'Fossil': 'Q1439431',
+            'Subversion': 'Q46794',
         },
         'test': {
         },
