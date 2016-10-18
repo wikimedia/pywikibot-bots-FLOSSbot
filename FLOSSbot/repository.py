@@ -235,6 +235,8 @@ class Repository(plugin.Plugin):
             return self.Q_File_Transfer_Protocol
         if url.startswith('cvs://'):
             return self.Q_Concurrent_Versions_System
+        if url.startswith('bzr://'):
+            return self.Q_GNU_Bazaar
         return None
 
     def verify_cvs(self, url, credentials):
